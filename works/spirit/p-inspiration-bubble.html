@@ -7,511 +7,733 @@
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body {
-        background: radial-gradient(circle at 30% 20%, #14213d 0%, #0b1426 55%, #060b16 100%);
-        color: #ffffff;
-        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-        overflow: hidden;
-        height: 100vh;
-        display: flex;
-        flex-direction: column;
-        user-select: none;
+      background: radial-gradient(circle at 30% 20%, #14213d 0%, #0b1426 55%, #060b16 100%);
+      color: #ffffff;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      overflow: hidden;
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+      user-select: none;
     }
     #canvas-container {
-        flex: 1;
-        position: relative;
-        width: 100%;
+      flex: 1;
+      position: relative;
+      width: 100%;
     }
     canvas { display: block; width: 100%; height: 100%; cursor: grab; }
 
     /* 顶部悬浮感应带：鼠标靠近屏幕顶部即可唤出工具栏，平时不占视觉空间 */
     #hover-zone {
-        position: absolute;
-        top: 0;
-        left: 0;
-        right: 0;
-        height: 90px;
-        z-index: 19;
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 90px;
+      z-index: 19;
     }
 
     /* 顶部工具条：默认隐藏，鼠标靠近顶部或悬停时淡入 */
     #topbar {
-        position: absolute;
-        top: 16px;
-        left: 16px;
-        right: 16px;
-        z-index: 20;
-        display: flex;
-        justify-content: space-between;
-        align-items: flex-start;
-        pointer-events: none;
-        opacity: 0;
-        transform: translateY(-8px);
-        transition: opacity 0.25s ease, transform 0.25s ease;
+      position: absolute;
+      top: 16px;
+      left: 16px;
+      right: 16px;
+      z-index: 20;
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      pointer-events: none;
+      opacity: 0;
+      transform: translateY(-8px);
+      transition: opacity 0.25s ease, transform 0.25s ease;
     }
     #topbar.revealed {
-        opacity: 1;
-        transform: translateY(0);
-        pointer-events: auto;
+      opacity: 1;
+      transform: translateY(0);
+      pointer-events: auto;
     }
     #tip {
-        color: rgba(148, 163, 184, 0.85);
-        font-size: 13px;
-        line-height: 1.6;
-        pointer-events: none;
+      color: rgba(148, 163, 184, 0.85);
+      font-size: 13px;
+      line-height: 1.6;
+      pointer-events: none;
     }
     #tip b { color: #93c5fd; }
     #toolbar {
-        display: flex;
-        gap: 8px;
+      display: flex;
+      gap: 8px;
     }
     .tool-btn {
-        background: rgba(19, 30, 49, 0.85);
-        border: 1px solid rgba(255,255,255,0.12);
-        color: #e2e8f0;
-        padding: 8px 14px;
-        border-radius: 20px;
-        font-size: 13px;
-        cursor: pointer;
-        backdrop-filter: blur(8px);
-        transition: transform 0.15s, background 0.15s;
-        white-space: nowrap;
+      background: rgba(19, 30, 49, 0.85);
+      border: 1px solid rgba(255,255,255,0.12);
+      color: #e2e8f0;
+      padding: 8px 14px;
+      border-radius: 20px;
+      font-size: 13px;
+      cursor: pointer;
+      backdrop-filter: blur(8px);
+      transition: transform 0.15s, background 0.15s;
+      white-space: nowrap;
     }
     .tool-btn:hover { background: rgba(59, 130, 246, 0.35); transform: translateY(-1px); }
     .tool-btn.danger:hover { background: rgba(239, 68, 68, 0.4); }
+    .tool-btn.active { background: rgba(59, 130, 246, 0.45); border-color: #3b82f6; }
     #counter {
-        color: rgba(148,163,184,0.9);
-        font-size: 12px;
-        align-self: center;
-        margin-right: 4px;
-        white-space: nowrap;
+      color: rgba(148,163,184,0.9);
+      font-size: 12px;
+      align-self: center;
+      margin-right: 4px;
+      white-space: nowrap;
     }
     .slider-group {
-        display: flex;
-        align-items: center;
-        gap: 6px;
-        background: rgba(19, 30, 49, 0.85);
-        border: 1px solid rgba(255,255,255,0.12);
-        padding: 6px 12px;
-        border-radius: 20px;
-        backdrop-filter: blur(8px);
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      background: rgba(19, 30, 49, 0.85);
+      border: 1px solid rgba(255,255,255,0.12);
+      padding: 6px 12px;
+      border-radius: 20px;
+      backdrop-filter: blur(8px);
     }
     .slider-group label {
-        font-size: 12px;
-        color: #94a3b8;
-        white-space: nowrap;
+      font-size: 12px;
+      color: #94a3b8;
+      white-space: nowrap;
     }
     .slider-group input[type="range"] {
-        width: 90px;
-        accent-color: #3b82f6;
-        cursor: pointer;
+      width: 90px;
+      accent-color: #3b82f6;
+      cursor: pointer;
     }
     .slider-group .slider-val {
-        font-size: 11px;
-        color: #64748b;
-        width: 30px;
-        text-align: right;
+      font-size: 11px;
+      color: #64748b;
+      width: 30px;
+      text-align: right;
     }
 
     /* 垃圾桶热区 */
     #trash-zone {
-        position: absolute;
-        top: 70px;
-        left: 16px;
-        width: 84px;
-        height: 84px;
-        border-radius: 20px;
-        background: rgba(239, 68, 68, 0.12);
-        border: 2px dashed rgba(239, 68, 68, 0.5);
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 32px;
-        z-index: 25;
-        opacity: 0;
-        transform: scale(0.85);
-        pointer-events: none;
-        transition: opacity 0.18s, transform 0.18s, background 0.18s, border-color 0.18s;
+      position: absolute;
+      top: 70px;
+      left: 16px;
+      width: 84px;
+      height: 84px;
+      border-radius: 20px;
+      background: rgba(239, 68, 68, 0.12);
+      border: 2px dashed rgba(239, 68, 68, 0.5);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 32px;
+      z-index: 25;
+      opacity: 0;
+      transform: scale(0.85);
+      pointer-events: none;
+      transition: opacity 0.18s, transform 0.18s, background 0.18s, border-color 0.18s;
     }
     #trash-zone.visible { opacity: 1; transform: scale(1); }
     #trash-zone.armed {
-        background: rgba(239, 68, 68, 0.35);
-        border-color: #ef4444;
-        transform: scale(1.15);
+      background: rgba(239, 68, 68, 0.35);
+      border-color: #ef4444;
+      transform: scale(1.15);
     }
 
     /* 撤销 toast */
     #toast {
-        position: absolute;
-        top: 16px;
-        right: 16px;
-        z-index: 30;
-        background: rgba(19, 30, 49, 0.95);
-        border: 1px solid rgba(255,255,255,0.15);
-        border-radius: 12px;
-        padding: 10px 14px;
-        display: none;
-        align-items: center;
-        gap: 12px;
-        font-size: 13px;
-        box-shadow: 0 8px 24px rgba(0,0,0,0.5);
+      position: absolute;
+      top: 16px;
+      right: 16px;
+      z-index: 30;
+      background: rgba(19, 30, 49, 0.95);
+      border: 1px solid rgba(255,255,255,0.15);
+      border-radius: 12px;
+      padding: 10px 14px;
+      display: none;
+      align-items: center;
+      gap: 12px;
+      font-size: 13px;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.5);
     }
     #toast.visible { display: flex; }
     #toast button {
-        background: #3b82f6;
-        border: none;
-        color: white;
-        padding: 5px 12px;
-        border-radius: 8px;
-        font-size: 12px;
-        cursor: pointer;
+      background: #3b82f6;
+      border: none;
+      color: white;
+      padding: 5px 12px;
+      border-radius: 8px;
+      font-size: 12px;
+      cursor: pointer;
     }
     #toast button:hover { background: #2563eb; }
     #toast-text { color: #cbd5e1; max-width: 220px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
     /* 悬浮详情提示 */
     #hover-tooltip {
-        position: absolute;
-        z-index: 35;
-        display: none;
-        max-width: 260px;
-        background: rgba(10, 16, 28, 0.96);
-        border: 1px solid rgba(255,255,255,0.18);
-        border-radius: 10px;
-        padding: 10px 12px;
-        box-shadow: 0 10px 28px rgba(0,0,0,0.55);
-        pointer-events: none;
+      position: absolute;
+      z-index: 35;
+      display: none;
+      max-width: 260px;
+      background: rgba(10, 16, 28, 0.96);
+      border: 1px solid rgba(255,255,255,0.18);
+      border-radius: 10px;
+      padding: 10px 12px;
+      box-shadow: 0 10px 28px rgba(0,0,0,0.55);
+      pointer-events: none;
     }
     #hover-tooltip.visible { display: block; }
     #hover-tooltip .tt-title {
-        font-size: 14px;
-        font-weight: 700;
-        color: #fff;
-        margin-bottom: 4px;
-        word-break: break-word;
+      font-size: 14px;
+      font-weight: 700;
+      color: #fff;
+      margin-bottom: 4px;
+      word-break: break-word;
     }
     #hover-tooltip .tt-divider {
-        border-top: 1px solid rgba(255,255,255,0.15);
-        margin: 6px 0;
+      border-top: 1px solid rgba(255,255,255,0.15);
+      margin: 6px 0;
     }
     #hover-tooltip .tt-detail {
-        font-size: 12.5px;
-        color: #cbd5e1;
-        line-height: 1.5;
-        white-space: pre-wrap;
-        word-break: break-word;
+      font-size: 12.5px;
+      color: #cbd5e1;
+      line-height: 1.5;
+      white-space: pre-wrap;
+      word-break: break-word;
     }
     #hover-tooltip .tt-meta {
-        font-size: 10.5px;
-        color: #64748b;
-        margin-top: 6px;
+      font-size: 10.5px;
+      color: #64748b;
+      margin-top: 6px;
     }
 
     /* 双击编辑浮层 */
     #edit-panel {
-        position: absolute;
-        z-index: 40;
-        display: none;
-        flex-direction: column;
-        gap: 8px;
-        background: rgba(15, 23, 42, 0.97);
-        border: 1px solid rgba(255,255,255,0.15);
-        border-radius: 14px;
-        padding: 12px;
-        box-shadow: 0 12px 36px rgba(0,0,0,0.6);
-        width: 260px;
+      position: absolute;
+      z-index: 40;
+      display: none;
+      flex-direction: column;
+      gap: 8px;
+      background: rgba(15, 23, 42, 0.97);
+      border: 1px solid rgba(255,255,255,0.15);
+      border-radius: 14px;
+      padding: 12px;
+      box-shadow: 0 12px 36px rgba(0,0,0,0.6);
+      width: 260px;
     }
     #edit-panel.visible { display: flex; }
     #edit-text {
-        width: 100%;
-        min-height: 48px;
-        background: rgba(255,255,255,0.06);
-        border: 1px solid rgba(255,255,255,0.15);
-        border-radius: 8px;
-        color: white;
-        font-size: 14px;
-        padding: 8px;
-        resize: none;
-        outline: none;
-        font-family: inherit;
+      width: 100%;
+      min-height: 48px;
+      background: rgba(255,255,255,0.06);
+      border: 1px solid rgba(255,255,255,0.15);
+      border-radius: 8px;
+      color: white;
+      font-size: 14px;
+      padding: 8px;
+      resize: none;
+      outline: none;
+      font-family: inherit;
     }
     #edit-text:focus, #edit-detail:focus { border-color: #3b82f6; }
     #edit-detail-label {
-        font-size: 11px;
-        color: #64748b;
-        margin-top: 2px;
+      font-size: 11px;
+      color: #64748b;
+      margin-top: 2px;
     }
     #edit-detail {
-        width: 100%;
-        min-height: 64px;
-        background: rgba(255,255,255,0.06);
-        border: 1px solid rgba(255,255,255,0.15);
-        border-radius: 8px;
-        color: white;
-        font-size: 13px;
-        padding: 8px;
-        resize: none;
-        outline: none;
-        font-family: inherit;
+      width: 100%;
+      min-height: 64px;
+      background: rgba(255,255,255,0.06);
+      border: 1px solid rgba(255,255,255,0.15);
+      border-radius: 8px;
+      color: white;
+      font-size: 13px;
+      padding: 8px;
+      resize: none;
+      outline: none;
+      font-family: inherit;
     }
     #edit-link-row {
-        display: flex;
-        align-items: center;
-        gap: 6px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
     }
     #edit-url {
-        flex: 1;
-        background: rgba(255,255,255,0.06);
-        border: 1px solid rgba(255,255,255,0.15);
-        border-radius: 8px;
-        color: white;
-        font-size: 12px;
-        padding: 7px 10px;
-        outline: none;
-        font-family: inherit;
+      flex: 1;
+      background: rgba(255,255,255,0.06);
+      border: 1px solid rgba(255,255,255,0.15);
+      border-radius: 8px;
+      color: white;
+      font-size: 12px;
+      padding: 7px 10px;
+      outline: none;
+      font-family: inherit;
     }
     #edit-url:focus { border-color: #3b82f6; }
     #edit-open-link {
-        background: rgba(59, 130, 246, 0.25);
-        border: 1px solid rgba(59, 130, 246, 0.4);
-        color: #93c5fd;
-        width: 32px;
-        height: 32px;
-        min-width: 32px;
-        border-radius: 8px;
-        font-size: 14px;
-        cursor: pointer;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        transition: background 0.15s;
+      background: rgba(59, 130, 246, 0.25);
+      border: 1px solid rgba(59, 130, 246, 0.4);
+      color: #93c5fd;
+      width: 32px;
+      height: 32px;
+      min-width: 32px;
+      border-radius: 8px;
+      font-size: 14px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: background 0.15s;
     }
     #edit-open-link:hover { background: rgba(59, 130, 246, 0.4); }
     #edit-colors {
-        display: flex;
-        gap: 10px;
-        justify-content: center;
-        align-items: center;
-        position: relative;
+      display: flex;
+      gap: 10px;
+      justify-content: center;
+      align-items: center;
+      position: relative;
     }
     #edit-colors .color-dot { width: 26px; height: 26px; }
     #edit-rainbow-input {
-        position: absolute;
-        opacity: 0;
-        width: 26px;
-        height: 26px;
-        cursor: pointer;
+      position: absolute;
+      opacity: 0;
+      width: 26px;
+      height: 26px;
+      cursor: pointer;
+    }
+    #edit-category-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+    #edit-category-row .cat-choice {
+      background: rgba(255,255,255,0.08);
+      border: 1px solid rgba(255,255,255,0.15);
+      color: #cbd5e1;
+      padding: 4px 10px;
+      border-radius: 10px;
+      font-size: 11.5px;
+      cursor: pointer;
+    }
+    #edit-category-row .cat-choice.active {
+      background: rgba(59, 130, 246, 0.4);
+      border-color: #3b82f6;
+      color: #fff;
     }
     #edit-actions {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
     }
     #edit-lock {
-        background: rgba(255,255,255,0.08);
-        border: 1px solid rgba(255,255,255,0.15);
-        color: #e2e8f0;
-        padding: 6px 10px;
-        border-radius: 8px;
-        font-size: 12px;
-        cursor: pointer;
+      background: rgba(255,255,255,0.08);
+      border: 1px solid rgba(255,255,255,0.15);
+      color: #e2e8f0;
+      padding: 6px 10px;
+      border-radius: 8px;
+      font-size: 12px;
+      cursor: pointer;
     }
     #edit-lock.locked { background: rgba(250, 204, 21, 0.25); border-color: #facc15; color: #facc15; }
     #edit-done {
-        background: #3b82f6;
-        border: none;
-        color: white;
-        padding: 6px 14px;
-        border-radius: 8px;
-        font-size: 12px;
-        cursor: pointer;
+      background: #3b82f6;
+      border: none;
+      color: white;
+      padding: 6px 14px;
+      border-radius: 8px;
+      font-size: 12px;
+      cursor: pointer;
     }
     #edit-done:hover { background: #2563eb; }
 
     /* 底部悬浮感应带：鼠标靠近屏幕底部即可唤出输入框，平时不占视觉空间 */
     #input-hover-zone {
-        position: absolute;
-        bottom: 0;
-        left: 0;
-        right: 0;
-        height: 100px;
-        z-index: 9;
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      height: 100px;
+      z-index: 9;
     }
     #input-container {
-        position: absolute;
-        bottom: 30px;
-        left: 50%;
-        transform: translateX(-50%) translateY(10px);
-        z-index: 10;
-        background: rgba(19, 30, 49, 0.85);
-        padding: 12px;
-        border-radius: 30px;
-        box-shadow: 0 10px 30px rgba(0,0,0,0.5);
-        border: 1px solid rgba(255,255,255,0.1);
-        backdrop-filter: blur(10px);
-        display: flex;
-        align-items: center;
-        width: 45%;
-        max-width: 339px;
-        gap: 6px;
-        opacity: 0;
-        pointer-events: none;
-        transition: opacity 0.25s ease, transform 0.25s ease;
+      position: absolute;
+      bottom: 30px;
+      left: 50%;
+      transform: translateX(-50%) translateY(10px);
+      z-index: 10;
+      background: rgba(19, 30, 49, 0.85);
+      padding: 12px;
+      border-radius: 30px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+      border: 1px solid rgba(255,255,255,0.1);
+      backdrop-filter: blur(10px);
+      display: flex;
+      align-items: center;
+      width: 45%;
+      max-width: 339px;
+      gap: 6px;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.25s ease, transform 0.25s ease;
     }
     #input-container.revealed {
-        opacity: 1;
-        transform: translateX(-50%) translateY(0);
-        pointer-events: auto;
+      opacity: 1;
+      transform: translateX(-50%) translateY(0);
+      pointer-events: auto;
     }
     input {
-        flex: 1;
-        background: transparent;
-        border: none;
-        outline: none;
-        color: white;
-        padding: 8px 16px;
-        font-size: 16px;
+      flex: 1;
+      background: transparent;
+      border: none;
+      outline: none;
+      color: white;
+      padding: 8px 16px;
+      font-size: 16px;
     }
     input::placeholder { color: #64748b; }
     #btn-confirm-add {
-        background: #3b82f6;
-        border: none;
-        color: white;
-        width: 38px;
-        height: 38px;
-        min-width: 38px;
-        border-radius: 50%;
-        font-size: 18px;
-        cursor: pointer;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        transition: background 0.15s;
+      background: #3b82f6;
+      border: none;
+      color: white;
+      width: 38px;
+      height: 38px;
+      min-width: 38px;
+      border-radius: 50%;
+      font-size: 18px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: background 0.15s;
     }
     #btn-confirm-add:hover { background: #2563eb; }
     #color-picker {
-        display: flex;
-        gap: 6px;
-        padding-right: 6px;
-        align-items: center;
-        position: relative;
+      display: flex;
+      gap: 6px;
+      padding-right: 6px;
+      align-items: center;
+      position: relative;
     }
     .color-dot {
-        width: 22px;
-        height: 22px;
-        border-radius: 50%;
-        cursor: pointer;
-        border: 2px solid transparent;
-        transition: transform 0.12s, border-color 0.12s;
-        flex-shrink: 0;
+      width: 22px;
+      height: 22px;
+      border-radius: 50%;
+      cursor: pointer;
+      border: 2px solid transparent;
+      transition: transform 0.12s, border-color 0.12s;
+      flex-shrink: 0;
     }
     .color-dot:hover { transform: scale(1.15); }
     .color-dot.selected { border-color: #fff; }
     .color-dot.rainbow {
-        background: conic-gradient(red, yellow, lime, cyan, blue, magenta, red);
-        position: relative;
+      background: conic-gradient(red, yellow, lime, cyan, blue, magenta, red);
+      position: relative;
     }
     .color-dot.random-dot {
-        background: conic-gradient(red, orange, yellow, lime, cyan, blue, violet, red);
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 10px;
-        font-weight: 700;
-        color: #101828;
-        text-shadow: 0 0 2px rgba(255,255,255,0.6);
+      background: conic-gradient(red, orange, yellow, lime, cyan, blue, violet, red);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 10px;
+      font-weight: 700;
+      color: #101828;
+      text-shadow: 0 0 2px rgba(255,255,255,0.6);
     }
     #rainbow-input {
-        position: absolute;
-        opacity: 0;
-        width: 22px;
-        height: 22px;
-        left: 0;
-        top: 0;
-        cursor: pointer;
+      position: absolute;
+      opacity: 0;
+      width: 22px;
+      height: 22px;
+      left: 0;
+      top: 0;
+      cursor: pointer;
     }
 
     /* 透明度垂直滑杆：0(全透明)~10(不透明) */
     .alpha-wrap {
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        gap: 2px;
-        flex-shrink: 0;
-        height: 60px;
-        justify-content: center;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 2px;
+      flex-shrink: 0;
+      height: 60px;
+      justify-content: center;
     }
     .alpha-slider {
-        writing-mode: vertical-lr;
-        direction: rtl;
-        -webkit-appearance: slider-vertical;
-        width: 20px;
-        height: 46px;
-        cursor: pointer;
-        accent-color: #94a3b8;
-        flex-shrink: 0;
-        margin: 0;
+      writing-mode: vertical-lr;
+      direction: rtl;
+      -webkit-appearance: slider-vertical;
+      width: 20px;
+      height: 46px;
+      cursor: pointer;
+      accent-color: #94a3b8;
+      flex-shrink: 0;
+      margin: 0;
     }
     .alpha-val {
-        font-size: 10px;
-        color: #94a3b8;
-        line-height: 1;
-        min-width: 14px;
-        text-align: center;
+      font-size: 10px;
+      color: #94a3b8;
+      line-height: 1;
+      min-width: 14px;
+      text-align: center;
     }
     #edit-colors .alpha-wrap { height: 70px; }
     #edit-colors .alpha-slider { height: 54px; }
 
     /* 右侧悬浮感应带：鼠标靠近屏幕右边即可唤出气泡大小滑杆，平时不占视觉空间 */
     #size-hover-zone {
-        position: absolute;
-        top: 0;
-        right: 0;
-        bottom: 0;
-        width: 90px;
-        z-index: 9;
+      position: absolute;
+      top: 0;
+      right: 0;
+      bottom: 0;
+      width: 90px;
+      z-index: 9;
     }
     #size-panel {
-        position: absolute;
-        top: 50%;
-        right: 18px;
-        transform: translateY(-50%) translateX(10px);
-        z-index: 10;
-        background: rgba(19, 30, 49, 0.85);
-        border: 1px solid rgba(255,255,255,0.12);
-        border-radius: 20px;
-        padding: 14px 8px;
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        gap: 6px;
-        backdrop-filter: blur(8px);
-        opacity: 0;
-        pointer-events: none;
-        transition: opacity 0.25s ease, transform 0.25s ease;
+      position: absolute;
+      top: 50%;
+      right: 18px;
+      transform: translateY(-50%) translateX(10px);
+      z-index: 10;
+      background: rgba(19, 30, 49, 0.85);
+      border: 1px solid rgba(255,255,255,0.12);
+      border-radius: 20px;
+      padding: 14px 8px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 6px;
+      backdrop-filter: blur(8px);
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.25s ease, transform 0.25s ease;
     }
     #size-panel.revealed {
-        opacity: 1;
-        transform: translateY(-50%) translateX(0);
-        pointer-events: auto;
+      opacity: 1;
+      transform: translateY(-50%) translateX(0);
+      pointer-events: auto;
     }
     #size-panel label {
-        font-size: 12px;
-        color: #94a3b8;
-        white-space: nowrap;
+      font-size: 12px;
+      color: #94a3b8;
+      white-space: nowrap;
     }
     #sizeSlider {
-        writing-mode: vertical-lr;
-        direction: rtl;
-        -webkit-appearance: slider-vertical;
-        width: 20px;
-        height: 120px;
-        cursor: pointer;
-        accent-color: #3b82f6;
-        margin: 4px 0;
+      writing-mode: vertical-lr;
+      direction: rtl;
+      -webkit-appearance: slider-vertical;
+      width: 20px;
+      height: 120px;
+      cursor: pointer;
+      accent-color: #3b82f6;
+      margin: 4px 0;
     }
     #size-panel .slider-val {
-        font-size: 11px;
-        color: #64748b;
+      font-size: 11px;
+      color: #64748b;
+    }
+
+    /* 左侧悬浮感应带：鼠标靠近屏幕左边即可唤出分类栏，平时不占视觉空间 */
+    #category-hover-zone {
+      position: absolute;
+      top: 0;
+      left: 0;
+      bottom: 0;
+      width: 180px;
+      z-index: 9;
+    }
+    #category-panel {
+      position: absolute;
+      top: 50%;
+      left: 18px;
+      transform: translateY(-50%) translateX(-10px);
+      z-index: 10;
+      background: rgba(19, 30, 49, 0.85);
+      border: 1px solid rgba(255,255,255,0.12);
+      border-radius: 18px;
+      padding: 10px 14px;
+      display: flex;
+      flex-direction: column;
+      align-items: stretch;
+      gap: 6px;
+      backdrop-filter: blur(8px);
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.25s ease, transform 0.25s ease;
+    }
+    #category-panel.revealed {
+      opacity: 1;
+      transform: translateY(-50%) translateX(0);
+      pointer-events: auto;
+    }
+    #category-list {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      padding: 4px 0;
+    }
+    /* Dock 式扇形放大：每个 tab 的缩放/位移由 JS 按鼠标距离实时写入 --dock-scale，
+       transform-origin 定在左侧，让放大时向右侧（画布方向）鼓出，而不会挤到面板外面 */
+    .category-tab {
+      --dock-scale: 1;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 7px;
+      background: rgba(255,255,255,0.06);
+      border: 1px solid rgba(255,255,255,0.1);
+      color: #cbd5e1;
+      padding: 6px 10px;
+      border-radius: 12px;
+      font-size: 12.5px;
+      cursor: pointer;
+      white-space: nowrap;
+      transform-origin: left center;
+      transform: scale(var(--dock-scale));
+      transition: background 0.15s, border-color 0.15s, transform 0.12s ease-out;
+      will-change: transform;
+    }
+    .category-tab:hover, .category-tab.active { background: color-mix(in srgb, var(--cat-color) 35%, rgba(255,255,255,0.06)); border-color: var(--cat-color); }
+    .category-tab.active { color: #fff; box-shadow: 0 0 0 1px var(--cat-color) inset; }
+    .category-tab.drop-armed { background: rgba(34, 197, 94, 0.35); border-color: #22c55e; }
+    .category-tab .cat-dot {
+      width: 9px;
+      height: 9px;
+      border-radius: 50%;
+      background: var(--cat-color);
+      flex-shrink: 0;
+      box-shadow: 0 0 6px var(--cat-color);
+    }
+    .category-tab .cat-name {
+      flex: 1;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .category-tab .cat-edit {
+      font-size: 11px;
+      opacity: 0;
+      transition: opacity 0.12s;
+      flex-shrink: 0;
+    }
+    .category-tab:hover .cat-edit { opacity: 0.8; }
+    .category-tab .cat-name-input {
+      flex: 1;
+      width: 60px;
+      background: rgba(255,255,255,0.1);
+      border: 1px solid #3b82f6;
+      border-radius: 6px;
+      color: #fff;
+      font-size: 12px;
+      padding: 2px 4px;
+      outline: none;
+      font-family: inherit;
+    }
+    .category-tab .cat-delete {
+      font-size: 11px;
+      color: #f87171;
+      flex-shrink: 0;
+      opacity: 0;
+      transition: opacity 0.12s;
+    }
+    .category-tab:hover .cat-delete { opacity: 0.8; }
+    #category-add-btn {
+      background: rgba(59, 130, 246, 0.2);
+      border: 1px solid rgba(59, 130, 246, 0.4);
+      color: #93c5fd;
+      padding: 6px 10px;
+      border-radius: 12px;
+      font-size: 13px;
+      cursor: pointer;
+      transition: background 0.15s;
+    }
+    #category-add-btn:hover { background: rgba(59, 130, 246, 0.4); }
+    #category-add-btn:disabled { opacity: 0.35; cursor: not-allowed; }
+    #category-add-btn.editing {
+      display: flex;
+    }
+    .category-add-input {
+      width: 100%;
+      background: rgba(255,255,255,0.1);
+      border: 1px solid #3b82f6;
+      border-radius: 12px;
+      color: #fff;
+      font-size: 12px;
+      padding: 6px 8px;
+      outline: none;
+      font-family: inherit;
+    }
+
+    /* 隔离网格：横竖两条可拖拽分隔线 */
+    #grid-overlay {
+      position: absolute;
+      top: 0; left: 0; right: 0; bottom: 0;
+      z-index: 15;
+      display: none;
+      pointer-events: none;
+    }
+    #grid-overlay.visible { display: block; }
+    #grid-line-v, #grid-line-h {
+      position: absolute;
+      pointer-events: auto;
+      background: transparent;
+    }
+    #grid-line-v {
+      top: 0; bottom: 0;
+      width: 12px;
+      margin-left: -6px;
+      cursor: col-resize;
+    }
+    #grid-line-h {
+      left: 0; right: 0;
+      height: 12px;
+      margin-top: -6px;
+      cursor: row-resize;
+    }
+    #grid-line-v::before, #grid-line-h::before {
+      content: '';
+      position: absolute;
+      background: rgba(148, 163, 184, 0.5);
+      border-left: 2px dashed rgba(148, 163, 184, 0.7);
+    }
+    #grid-line-v::before {
+      left: 6px; top: 0; bottom: 0; width: 0;
+    }
+    #grid-line-h::before {
+      top: 6px; left: 0; right: 0; height: 0;
+      border-left: none;
+      border-top: 2px dashed rgba(148, 163, 184, 0.7);
+    }
+    #grid-line-v.dragging::before, #grid-line-h.dragging::before {
+      border-color: #3b82f6;
+    }
+
+    /* 象限标签：贴着十字交点四周显示，随分隔线拖动实时跟随；双击可改名 */
+    .quadrant-label {
+      position: absolute;
+      pointer-events: auto;
+      background: rgba(19, 30, 49, 0.85);
+      border: 1px solid rgba(255,255,255,0.15);
+      color: #e2e8f0;
+      font-size: 12px;
+      padding: 4px 9px;
+      border-radius: 10px;
+      white-space: nowrap;
+      cursor: text;
+      backdrop-filter: blur(6px);
+      user-select: none;
+    }
+    .quadrant-label-input {
+      position: absolute;
+      font-size: 12px;
+      padding: 3px 8px;
+      border-radius: 10px;
+      background: rgba(255,255,255,0.1);
+      border: 1px solid #3b82f6;
+      color: #fff;
+      outline: none;
+      font-family: inherit;
+      white-space: nowrap;
     }
   </style>
 </head>
@@ -519,7 +741,7 @@
 
 <div id="hover-zone"></div>
 <div id="topbar">
-  <div id="tip"> · 双击编辑<br> · 拖动删除<br> · 悬浮查看详情<br>📌 锁定气泡</div>
+  <div id="tip"> 📌 双击编辑<br> 👋 拖动删除</div>
   <div id="toolbar">
     <span id="counter">0 个灵感</span>
     <div class="slider-group">
@@ -532,6 +754,7 @@
       <input type="range" id="textRatioSlider" min="60" max="130" value="100">
       <span class="slider-val" id="textRatioVal">100%</span>
     </div>
+    <button class="tool-btn" id="btn-grid-toggle">⊞ 隔离</button>
     <button class="tool-btn" id="btn-export">💾 导出</button>
     <button class="tool-btn danger" id="btn-clear-bubbles">🧹 清除所有</button>
   </div>
@@ -539,6 +762,14 @@
 
 <div id="canvas-container">
   <canvas id="bubbleCanvas"></canvas>
+  <div id="grid-overlay">
+    <div id="grid-line-v"></div>
+    <div id="grid-line-h"></div>
+    <div class="quadrant-label" id="quadrant-label-0" data-quadrant="0"></div>
+    <div class="quadrant-label" id="quadrant-label-1" data-quadrant="1"></div>
+    <div class="quadrant-label" id="quadrant-label-2" data-quadrant="2"></div>
+    <div class="quadrant-label" id="quadrant-label-3" data-quadrant="3"></div>
+  </div>
   <div id="trash-zone">🗑️</div>
   <div id="hover-tooltip">
     <div class="tt-title" id="tt-title"></div>
@@ -555,6 +786,7 @@
       <button id="edit-open-link" title="打开链接" aria-label="打开链接">🔗</button>
     </div>
     <div id="edit-colors"></div>
+    <div id="edit-category-row"></div>
     <div id="edit-actions">
       <button id="edit-lock">📌 锁定</button>
       <button id="edit-done">完成</button>
@@ -567,6 +799,12 @@
   <label for="sizeSlider">🔵 大小</label>
   <input type="range" id="sizeSlider" min="80" max="320" value="166">
   <span class="slider-val" id="sizeVal">100%</span>
+</div>
+
+<div id="category-hover-zone"></div>
+<div id="category-panel">
+  <div id="category-list"></div>
+  <button id="category-add-btn" title="新建分类" aria-label="新建分类">+</button>
 </div>
 
 <div id="toast">
@@ -583,1052 +821,1535 @@
 
 <script>
   (function () {
-      const canvas = document.getElementById('bubbleCanvas');
-      const ctx = canvas.getContext('2d');
-      const container = document.getElementById('canvas-container');
-      const wordInput = document.getElementById('wordInput');
-      const trashZone = document.getElementById('trash-zone');
-      const toast = document.getElementById('toast');
-      const toastText = document.getElementById('toast-text');
-      const toastUndo = document.getElementById('toast-undo');
-      const editPanel = document.getElementById('edit-panel');
-      const editText = document.getElementById('edit-text');
-      const editDetail = document.getElementById('edit-detail');
-      const editColors = document.getElementById('edit-colors');
-      const editLockBtn = document.getElementById('edit-lock');
-      const editDoneBtn = document.getElementById('edit-done');
-      const counterEl = document.getElementById('counter');
-      const colorPicker = document.getElementById('color-picker');
-      const btnConfirmAdd = document.getElementById('btn-confirm-add');
-      const btnExport = document.getElementById('btn-export');
-      const btnClearBubbles = document.getElementById('btn-clear-bubbles');
-      const topbar = document.getElementById('topbar');
-      const hoverZone = document.getElementById('hover-zone');
-      const inputContainer = document.getElementById('input-container');
-      const inputHoverZone = document.getElementById('input-hover-zone');
-      const speedSlider = document.getElementById('speedSlider');
-      const speedVal = document.getElementById('speedVal');
-      const textRatioSlider = document.getElementById('textRatioSlider');
-      const textRatioVal = document.getElementById('textRatioVal');
-      const sizePanel = document.getElementById('size-panel');
-      const sizeHoverZone = document.getElementById('size-hover-zone');
-      const sizeSlider = document.getElementById('sizeSlider');
-      const sizeVal = document.getElementById('sizeVal');
-      const hoverTooltip = document.getElementById('hover-tooltip');
-      const ttTitle = document.getElementById('tt-title');
-      const ttDivider = document.getElementById('tt-divider');
-      const ttDetail = document.getElementById('tt-detail');
-      const ttMeta = document.getElementById('tt-meta');
-      const editUrl = document.getElementById('edit-url');
-      const editOpenLink = document.getElementById('edit-open-link');
+    const canvas = document.getElementById('bubbleCanvas');
+    const ctx = canvas.getContext('2d');
+    const container = document.getElementById('canvas-container');
+    const wordInput = document.getElementById('wordInput');
+    const trashZone = document.getElementById('trash-zone');
+    const toast = document.getElementById('toast');
+    const toastText = document.getElementById('toast-text');
+    const toastUndo = document.getElementById('toast-undo');
+    const editPanel = document.getElementById('edit-panel');
+    const editText = document.getElementById('edit-text');
+    const editDetail = document.getElementById('edit-detail');
+    const editColors = document.getElementById('edit-colors');
+    const editLockBtn = document.getElementById('edit-lock');
+    const editDoneBtn = document.getElementById('edit-done');
+    const counterEl = document.getElementById('counter');
+    const colorPicker = document.getElementById('color-picker');
+    const btnConfirmAdd = document.getElementById('btn-confirm-add');
+    const btnExport = document.getElementById('btn-export');
+    const btnClearBubbles = document.getElementById('btn-clear-bubbles');
+    const topbar = document.getElementById('topbar');
+    const hoverZone = document.getElementById('hover-zone');
+    const inputContainer = document.getElementById('input-container');
+    const inputHoverZone = document.getElementById('input-hover-zone');
+    const speedSlider = document.getElementById('speedSlider');
+    const speedVal = document.getElementById('speedVal');
+    const textRatioSlider = document.getElementById('textRatioSlider');
+    const textRatioVal = document.getElementById('textRatioVal');
+    const sizePanel = document.getElementById('size-panel');
+    const sizeHoverZone = document.getElementById('size-hover-zone');
+    const sizeSlider = document.getElementById('sizeSlider');
+    const sizeVal = document.getElementById('sizeVal');
+    const hoverTooltip = document.getElementById('hover-tooltip');
+    const ttTitle = document.getElementById('tt-title');
+    const ttDivider = document.getElementById('tt-divider');
+    const ttDetail = document.getElementById('tt-detail');
+    const ttMeta = document.getElementById('tt-meta');
+    const editUrl = document.getElementById('edit-url');
+    const editOpenLink = document.getElementById('edit-open-link');
+    const editCategoryRow = document.getElementById('edit-category-row');
+    const categoryPanel = document.getElementById('category-panel');
+    const categoryHoverZone = document.getElementById('category-hover-zone');
+    const categoryList = document.getElementById('category-list');
+    const categoryAddBtn = document.getElementById('category-add-btn');
+    const btnGridToggle = document.getElementById('btn-grid-toggle');
+    const gridOverlay = document.getElementById('grid-overlay');
+    const gridLineV = document.getElementById('grid-line-v');
+    const gridLineH = document.getElementById('grid-line-h');
+    const quadrantLabels = [0, 1, 2, 3].map(q => document.getElementById('quadrant-label-' + q));
 
-      let width = canvas.width = container.clientWidth;
-      let height = canvas.height = container.clientHeight;
+    let width = canvas.width = container.clientWidth;
+    let height = canvas.height = container.clientHeight;
 
-      const STORAGE_KEY = 'inspiration-bubbles-data-v1';
-      const SETTINGS_KEY = 'inspiration-bubbles-settings-v1';
+    const STORAGE_KEY = 'inspiration-bubbles-data-v1';
+    const SETTINGS_KEY = 'inspiration-bubbles-settings-v1';
+    const CATEGORY_KEY = 'inspiration-bubbles-categories-v1';
 
-      let speedFactor = 1;   // 0 ~ 2，全局漂浮速度倍率
-      let textRatio = 1;     // 0.6 ~ 1.3，气泡内文字相对大小系数
-      let sizeRatio = 1;      // 0.5 ~ 2，全局气泡大小缩放系数（文字随气泡半径自动跟随，无需单独缩放）
+    let speedFactor = 1;   // 0 ~ 2，全局漂浮速度倍率
+    let textRatio = 1;     // 0.6 ~ 1.3，气泡内文字相对大小系数
+    let sizeRatio = 1;      // 0.5 ~ 2，全局气泡大小缩放系数（文字随气泡半径自动跟随，无需单独缩放）
 
-      // 首次打开（无本地缓存）时的默认气泡，可在此直接修改 text/color/detail/alpha/url 来定制你的常驻面板
-      const DEFAULT_BUBBLES = [
-            { text: '🧠AGI', color: '#ff3b30', alpha: 0.5, detail: '人工智能技术，包括机器学习、深度学习等。' },
-            { text: '机器人🤖', color: '#34c759', alpha: 0.5, detail: '自动化的机器人，用于各种任务。' },
-            { text: '火星🔥', color: '#0a84ff', alpha: 0.5, detail: '火星 exploration and colonization。' },
-            { text: 'OpenAI', color: '#34c759', alpha: 0.5, detail: '等待上市' },
-            { text: '存储', color: '#0a84ff', alpha: 0.5, detail: '云存储服务，提供在线存储和数据备份。' },
-            { text: '小米出海', color: '#ff9500', alpha: 0.5, detail: '小米集团的国际化业务，包括智能手机、家电等产品。' },
-            { text: '🚀马斯克', color: '#ff9500', alpha: 0.5, url: 'x.com', detail: '埃隆·马斯克，美国企业家、发明家和工程师。' },
-            { text: '英语', color: '#ff3b30', alpha: 0.5, detail: '全球最广泛使用的语言之一。' },
-            { text: '加密特朗普', color: '#34c759', alpha: 0.5, url: 'truthsocial.com/@realDonaldTrump', detail: '加密货币项目，由特朗普创立。' },
-            { text: '🇺🇸9月访美', color: '#0a84ff', alpha: 0.5, detail: '访问美国。' }
-        ];
+    // 分类：最多 5 个，气泡单一归属，recent 为保底分类不可删除；每个分类分配一个专属颜色用于 Dock 风格高亮
+    const MAX_CATEGORIES = 5;
+    const CATEGORY_COLORS = ['#3b82f6', '#22c55e', '#f59e0b', '#a855f7', '#ec4899'];
+    const DEFAULT_CATEGORIES = [
+      { id: 'recent', name: '最近', color: CATEGORY_COLORS[0] },
+      { id: 'pinned', name: '常驻', color: CATEGORY_COLORS[1] },
+      { id: 'month', name: '本月', color: CATEGORY_COLORS[2] },
+      { id: 'astro', name: '天文', color: CATEGORY_COLORS[3] },
+      { id: 'finance', name: '金融', color: CATEGORY_COLORS[4] }
+    ];
+    let categories = DEFAULT_CATEGORIES.map(c => ({ ...c }));
+    let activeCategory = 'recent';
+    let categoryIdSeq = 1;
 
-      // 三原色预设（红/绿/蓝），随机色和万色调色盘单独处理
-      const PRIMARY_COLORS = ['#ff3b30', '#34c759', '#0a84ff'];
-      const DEFAULT_COLOR = PRIMARY_COLORS[2];
-      const DEFAULT_URL = 'https://www.google.com';
+    // 隔离网格：每个分类独立记忆 { enabled, splitX, splitY(0~1 比例), labels(4个象限名，仅对该分类生效) }
+    const DEFAULT_QUADRANT_LABELS = ['🔥 马上做', '💎 规划做', '👥 降级做', '🗑️ 限制做'];
+    let gridState = {};
+    function getGrid(catId) {
+      if (!gridState[catId]) gridState[catId] = { enabled: false, splitX: 0.5, splitY: 0.5, labels: [...DEFAULT_QUADRANT_LABELS] };
+      if (!gridState[catId].labels) gridState[catId].labels = [...DEFAULT_QUADRANT_LABELS];
+      return gridState[catId];
+    }
 
-      let lastRandomHue = null;
-      function randomColor() {
-          // 每次随机取色都尽量与上一次的色相拉开距离（>=100°），避免相邻两次颜色相近
-          let hue;
-          do {
-              hue = Math.floor(Math.random() * 360);
-          } while (lastRandomHue !== null && Math.min(Math.abs(hue - lastRandomHue), 360 - Math.abs(hue - lastRandomHue)) < 100);
-          lastRandomHue = hue;
-          return hslToHex(hue, 70, 55);
+    // 首次打开（无本地缓存）时的默认气泡，可在此直接修改 text/color/detail/alpha/url 来定制你的常驻面板
+    const DEFAULT_BUBBLES = [
+      { text: '🧠AGI', color: '#ff3b30', alpha: 0.5, detail: '人工智能技术，包括机器学习、深度学习等。' },
+      { text: '机器人🤖', color: '#34c759', alpha: 0.5, detail: '自动化的机器人，用于各种任务。' },
+      { text: '火星🔥', color: '#0a84ff', alpha: 0.5, detail: '火星 exploration and colonization。' },
+      { text: 'OpenAI', color: '#34c759', alpha: 0.5, detail: '等待上市' },
+      { text: '存储', color: '#0a84ff', alpha: 0.5, detail: '云存储服务，提供在线存储和数据备份。' },
+      { text: '小米出海', color: '#ff9500', alpha: 0.5, detail: '小米集团的国际化业务，包括智能手机、家电等产品。' },
+      { text: '🚀马斯克', color: '#ff9500', alpha: 0.5, url: 'x.com', detail: '埃隆·马斯克，美国企业家、发明家和工程师。' },
+      { text: '英语', color: '#ff3b30', alpha: 0.5, detail: '全球最广泛使用的语言之一。' },
+      { text: '加密特朗普', color: '#34c759', alpha: 0.5, url: 'truthsocial.com/@realDonaldTrump', detail: '加密货币项目，由特朗普创立。' },
+      { text: '🇺🇸9月访美', color: '#0a84ff', alpha: 0.5, detail: '访问美国。' }
+    ];
+
+    // 三原色预设（红/绿/蓝），随机色和万色调色盘单独处理
+    const PRIMARY_COLORS = ['#ff3b30', '#34c759', '#0a84ff'];
+    const DEFAULT_COLOR = PRIMARY_COLORS[2];
+    const DEFAULT_URL = 'https://www.google.com';
+
+    let lastRandomHue = null;
+    function randomColor() {
+      // 每次随机取色都尽量与上一次的色相拉开距离（>=100°），避免相邻两次颜色相近
+      let hue;
+      do {
+        hue = Math.floor(Math.random() * 360);
+      } while (lastRandomHue !== null && Math.min(Math.abs(hue - lastRandomHue), 360 - Math.abs(hue - lastRandomHue)) < 100);
+      lastRandomHue = hue;
+      return hslToHex(hue, 70, 55);
+    }
+    function hslToHex(h, s, l) {
+      s /= 100; l /= 100;
+      const k = n => (n + h / 30) % 12;
+      const a = s * Math.min(l, 1 - l);
+      const f = n => l - a * Math.max(-1, Math.min(k(n) - 3, Math.min(9 - k(n), 1)));
+      const toHex = v => Math.round(v * 255).toString(16).padStart(2, '0');
+      return `#${toHex(f(0))}${toHex(f(8))}${toHex(f(4))}`;
+    }
+
+    let bubbles = [];
+    let draggedBubble = null;
+    let editingBubble = null;
+    let selectedColor = DEFAULT_COLOR;
+    let colorMode = 'random'; // 'fixed' | 'random' —— 随机模式下每个新气泡都会重新随机取色，默认选中随机色
+    let selectedAlpha = 0.5;  // 0 ~ 1，气泡填充透明度（万色调色盘旁的透明度滑条控制），默认 5/10
+    let mouseX = 0, mouseY = 0;
+    let bubbleIdSeq = 1;
+    let recentlyDeleted = null;
+    let toastTimer = null;
+    let saveTimer = null;
+
+    // 把坐标夹回 [0, size] 内：当气泡直径大于容器尺寸时（极小窗口/激进缩放），
+    // 优先保证不越过容器边界（半径夹在 [0, size/2]），而不是让"留出半径位置"的旧逻辑把气泡推出屏幕
+    function clampAxis(v, radius, size) {
+      const r = Math.min(radius, size / 2);
+      return Math.max(r, Math.min(size - r, v));
+    }
+
+    window.addEventListener('resize', () => {
+      width = canvas.width = container.clientWidth;
+      height = canvas.height = container.clientHeight;
+      // 缩放/窗口变化后，把所有气泡夹回新的可视范围内（同时兼顾其所属隔离网格象限边界），避免超出边界
+      bubbles.forEach(b => {
+        b.x = clampAxis(b.x, b.radius, width);
+        b.y = clampAxis(b.y, b.radius, height);
+        const grid = gridState[b.category];
+        if (grid && grid.enabled && b.quadrant !== null) {
+          const vx = grid.splitX * width, vy = grid.splitY * height;
+          const left = (b.quadrant === 0 || b.quadrant === 2) ? 0 : vx;
+          const right = (b.quadrant === 0 || b.quadrant === 2) ? vx : width;
+          const top = (b.quadrant === 0 || b.quadrant === 1) ? 0 : vy;
+          const bottom = (b.quadrant === 0 || b.quadrant === 1) ? vy : height;
+          b.x = clampAxis(b.x - left, b.radius, right - left) + left;
+          b.y = clampAxis(b.y - top, b.radius, bottom - top) + top;
+        }
+      });
+      positionGridLines(getGrid(activeCategory));
+      positionQuadrantLabels(getGrid(activeCategory));
+    });
+
+    // ---------- 颜色工具 ----------
+    function hexToRgb(hex) {
+      const v = parseInt(hex.slice(1), 16);
+      return { r: (v >> 16) & 255, g: (v >> 8) & 255, b: v & 255 };
+    }
+    function textColorFor(hex) {
+      const { r, g, b } = hexToRgb(hex);
+      const yiq = (r * 299 + g * 587 + b * 114) / 1000;
+      return yiq >= 150 ? '#101828' : '#ffffff';
+    }
+    function shade(hex, amt) {
+      const { r, g, b } = hexToRgb(hex);
+      const f = (c) => Math.max(0, Math.min(255, Math.round(c + amt)));
+      return `rgb(${f(r)}, ${f(g)}, ${f(b)})`;
+    }
+
+    // ---------- 选色 UI：三原色 + 随机色 + 万色调色盘(+透明度)，共 5 项 ----------
+    // wrapperEl 内部结构：3 个三原色点 + 1 个随机色点 + 1 个彩虹万色点(内嵌 <input type="color">)
+    // opts.onModeChange: 仅底部输入框选色器使用，随机色点被点击时进入"持续随机"模式，点其他选项时退出
+    // opts.isRandomMode: 仅底部输入框选色器使用，用于渲染时判断随机色点是否应处于选中态
+    // opts.alpha: { get, set } —— 传入时在万色点右侧渲染透明度滑条
+    function buildColorPicker(wrapperEl, onPick, getSelected, opts) {
+      opts = opts || {};
+      wrapperEl.innerHTML = '';
+
+      function makeDot(color, title) {
+        const dot = document.createElement('div');
+        dot.className = 'color-dot';
+        dot.style.background = color;
+        dot.title = title;
+        if (getSelected() === color) dot.classList.add('selected');
+        return dot;
       }
-      function hslToHex(h, s, l) {
-          s /= 100; l /= 100;
-          const k = n => (n + h / 30) % 12;
-          const a = s * Math.min(l, 1 - l);
-          const f = n => l - a * Math.max(-1, Math.min(k(n) - 3, Math.min(9 - k(n), 1)));
-          const toHex = v => Math.round(v * 255).toString(16).padStart(2, '0');
-          return `#${toHex(f(0))}${toHex(f(8))}${toHex(f(4))}`;
+
+      function refreshSelected() {
+        const randomActive = !!(opts.isRandomMode && opts.isRandomMode());
+        wrapperEl.querySelectorAll('.color-dot').forEach(d => {
+          if (d.dataset.role === 'random') d.classList.toggle('selected', randomActive);
+          else d.classList.toggle('selected', !randomActive && d.dataset.color === getSelected());
+        });
       }
 
-      let bubbles = [];
-      let draggedBubble = null;
-      let editingBubble = null;
-      let selectedColor = DEFAULT_COLOR;
-      let colorMode = 'random'; // 'fixed' | 'random' —— 随机模式下每个新气泡都会重新随机取色，默认选中随机色
-      let selectedAlpha = 0.5;  // 0 ~ 1，气泡填充透明度（万色调色盘旁的透明度滑条控制），默认 5/10
-      let mouseX = 0, mouseY = 0;
-      let bubbleIdSeq = 1;
-      let recentlyDeleted = null;
-      let toastTimer = null;
-      let saveTimer = null;
-
-      window.addEventListener('resize', () => {
-          width = canvas.width = container.clientWidth;
-          height = canvas.height = container.clientHeight;
-          // 缩放/窗口变化后，把所有气泡夹回新的可视范围内，避免超出边界
-          bubbles.forEach(b => {
-              b.x = Math.max(b.radius, Math.min(width - b.radius, b.x));
-              b.y = Math.max(b.radius, Math.min(height - b.radius, b.y));
-          });
+      PRIMARY_COLORS.forEach((color) => {
+        const dot = makeDot(color, '三原色');
+        dot.dataset.color = color;
+        dot.addEventListener('click', (e) => {
+          e.stopPropagation();
+          if (opts.onModeChange) opts.onModeChange('fixed');
+          onPick(color);
+          refreshSelected();
+        });
+        wrapperEl.appendChild(dot);
       });
 
-      // ---------- 颜色工具 ----------
-      function hexToRgb(hex) {
-          const v = parseInt(hex.slice(1), 16);
-          return { r: (v >> 16) & 255, g: (v >> 8) & 255, b: v & 255 };
-      }
-      function textColorFor(hex) {
-          const { r, g, b } = hexToRgb(hex);
-          const yiq = (r * 299 + g * 587 + b * 114) / 1000;
-          return yiq >= 150 ? '#101828' : '#ffffff';
-      }
-      function shade(hex, amt) {
-          const { r, g, b } = hexToRgb(hex);
-          const f = (c) => Math.max(0, Math.min(255, Math.round(c + amt)));
-          return `rgb(${f(r)}, ${f(g)}, ${f(b)})`;
-      }
-
-      // ---------- 选色 UI：三原色 + 随机色 + 万色调色盘(+透明度)，共 5 项 ----------
-      // wrapperEl 内部结构：3 个三原色点 + 1 个随机色点 + 1 个彩虹万色点(内嵌 <input type="color">)
-      // opts.onModeChange: 仅底部输入框选色器使用，随机色点被点击时进入"持续随机"模式，点其他选项时退出
-      // opts.isRandomMode: 仅底部输入框选色器使用，用于渲染时判断随机色点是否应处于选中态
-      // opts.alpha: { get, set } —— 传入时在万色点右侧渲染透明度滑条
-      function buildColorPicker(wrapperEl, onPick, getSelected, opts) {
-          opts = opts || {};
-          wrapperEl.innerHTML = '';
-
-          function makeDot(color, title) {
-              const dot = document.createElement('div');
-              dot.className = 'color-dot';
-              dot.style.background = color;
-              dot.title = title;
-              if (getSelected() === color) dot.classList.add('selected');
-              return dot;
-          }
-
-          function refreshSelected() {
-              const randomActive = !!(opts.isRandomMode && opts.isRandomMode());
-              wrapperEl.querySelectorAll('.color-dot').forEach(d => {
-                  if (d.dataset.role === 'random') d.classList.toggle('selected', randomActive);
-                  else d.classList.toggle('selected', !randomActive && d.dataset.color === getSelected());
-              });
-          }
-
-          PRIMARY_COLORS.forEach((color) => {
-              const dot = makeDot(color, '三原色');
-              dot.dataset.color = color;
-              dot.addEventListener('click', (e) => {
-                  e.stopPropagation();
-                  if (opts.onModeChange) opts.onModeChange('fixed');
-                  onPick(color);
-                  refreshSelected();
-              });
-              wrapperEl.appendChild(dot);
-          });
-
-          const randomDot = document.createElement('div');
-          randomDot.className = 'color-dot random-dot';
-          randomDot.dataset.role = 'random';
-          randomDot.textContent = '随';
-          randomDot.title = opts.onModeChange ? '随机色：点击后，每个新气泡都会自动换一个新颜色' : '随机色（换一个）';
-          if (opts.isRandomMode && opts.isRandomMode()) randomDot.classList.add('selected');
-          randomDot.addEventListener('click', (e) => {
-              e.stopPropagation();
-              if (opts.onModeChange) opts.onModeChange('random');
-              const color = randomColor();
-              onPick(color);
-              refreshSelected();
-          });
-          wrapperEl.appendChild(randomDot);
-
-          const rainbowWrap = document.createElement('div');
-          rainbowWrap.style.position = 'relative';
-          rainbowWrap.style.width = '22px';
-          rainbowWrap.style.height = '22px';
-          const rainbowDot = document.createElement('div');
-          rainbowDot.className = 'color-dot rainbow';
-          rainbowDot.title = '万色：点击选取任意颜色';
-          const rainbowInput = document.createElement('input');
-          rainbowInput.type = 'color';
-          rainbowInput.className = 'rainbow-input-el';
-          rainbowInput.style.position = 'absolute';
-          rainbowInput.style.opacity = '0';
-          rainbowInput.style.width = '100%';
-          rainbowInput.style.height = '100%';
-          rainbowInput.style.left = '0';
-          rainbowInput.style.top = '0';
-          rainbowInput.style.cursor = 'pointer';
-          const current = getSelected();
-          rainbowInput.value = /^#[0-9a-f]{6}$/i.test(current) ? current : DEFAULT_COLOR;
-          rainbowInput.addEventListener('input', (e) => {
-              if (opts.onModeChange) opts.onModeChange('fixed');
-              onPick(e.target.value);
-              refreshSelected();
-          });
-          rainbowWrap.appendChild(rainbowDot);
-          rainbowWrap.appendChild(rainbowInput);
-          wrapperEl.appendChild(rainbowWrap);
-
-          if (opts.alpha) {
-              const alphaWrap = document.createElement('div');
-              alphaWrap.className = 'alpha-wrap';
-              alphaWrap.title = '透明度（0=全透明，10=不透明）';
-
-              const alphaSlider = document.createElement('input');
-              alphaSlider.type = 'range';
-              alphaSlider.className = 'alpha-slider';
-              alphaSlider.min = '0';
-              alphaSlider.max = '10';
-              alphaSlider.step = '1';
-              alphaSlider.value = String(Math.round(opts.alpha.get() * 10));
-
-              const alphaVal = document.createElement('span');
-              alphaVal.className = 'alpha-val';
-              alphaVal.textContent = alphaSlider.value;
-
-              alphaSlider.addEventListener('input', (e) => {
-                  const level = Number(e.target.value);
-                  opts.alpha.set(level / 10);
-                  alphaVal.textContent = String(level);
-              });
-
-              alphaWrap.appendChild(alphaSlider);
-              alphaWrap.appendChild(alphaVal);
-              wrapperEl.appendChild(alphaWrap);
-          }
-      }
-
-      buildColorPicker(
-          colorPicker,
-          (color) => { selectedColor = color; },
-          () => selectedColor,
-          {
-              onModeChange: (mode) => { colorMode = mode; },
-              isRandomMode: () => colorMode === 'random',
-              alpha: { get: () => selectedAlpha, set: (v) => { selectedAlpha = v; } }
-          }
-      );
-
-      // ---------- 气泡类 ----------
-      class Bubble {
-          constructor(opts) {
-              this.id = opts.id || (bubbleIdSeq++);
-              this.text = opts.text;
-              this.detail = opts.detail || '';
-              this.color = opts.color || DEFAULT_COLOR;
-              this.alpha = typeof opts.alpha === 'number' ? opts.alpha : 1;
-              this.locked = !!opts.locked;
-              this.url = opts.url || DEFAULT_URL;
-              this.createdAt = opts.createdAt || Date.now();
-
-              this.baseRadius = Math.max(38, Math.min(85, this.text.length * 6 + Math.random() * 24));
-              this.radius = this.baseRadius;
-              this.lines = [];
-              this.fontSize = 15;
-              this.computeLayout();
-
-              this.x = typeof opts.x === 'number' ? opts.x : Math.random() * (width - this.radius * 2) + this.radius;
-              this.y = typeof opts.y === 'number' ? opts.y : Math.random() * (height - this.radius * 2) + this.radius;
-
-              this.vx = typeof opts.vx === 'number' ? opts.vx : (Math.random() - 0.5) * 3.2;
-              this.vy = typeof opts.vy === 'number' ? opts.vy : (Math.random() - 0.5) * 3.2;
-
-              this.wanderAngle = Math.random() * Math.PI * 2;
-
-              // 仿生抖动：让圆周边缘本身自然起伏（表面张力感），而不是整个泡泡平移
-              // 叠加两组不同频率/相位的正弦波纹，避免看起来像规则的齿轮状
-              this.wobble1 = { freq: 3 + Math.floor(Math.random() * 2), phase: Math.random() * Math.PI * 2, speed: 0.05 + Math.random() * 0.03 };
-              this.wobble2 = { freq: 5 + Math.floor(Math.random() * 3), phase: Math.random() * Math.PI * 2, speed: 0.07 + Math.random() * 0.04 };
-              this.wobbleTime = 0;
-          }
-
-          setText(text, detail) {
-              this.text = text;
-              this.detail = detail || '';
-              this.computeLayout();
-          }
-
-          // 根据文字长度换行，并让字号/半径按圆弦几何精确贴合，使文字尽可能填满气泡且不会有任何一行溢出圆外
-          computeLayout() {
-              const words = this.text.split('');
-              const maxCharsPerLine = 7;
-              const rawLines = [];
-              let current = '';
-              for (let i = 0; i < words.length; i++) {
-                  current += words[i];
-                  if (current.length >= maxCharsPerLine || i === words.length - 1) {
-                      rawLines.push(current);
-                      current = '';
-                  }
-              }
-              let lines = rawLines.slice(0, 3);
-              if (rawLines.length > 3) {
-                  lines[2] = lines[2].slice(0, Math.max(1, lines[2].length - 1)) + '…';
-              }
-              this.lines = lines.length ? lines : [''];
-
-              // 给定字号，按圆弦几何算出容纳全部行所需的最小半径：
-              // 每行中心位于圆心上下 dy 处，该行要留在圆内需要 R >= sqrt((宽度/2)^2 + dy^2)
-              const radiusNeededFor = (fs) => {
-                  ctx.font = `700 ${fs}px -apple-system, sans-serif`;
-                  const lineHeight = fs * 1.2;
-                  const n = this.lines.length;
-                  let maxNeeded = 0;
-                  this.lines.forEach((line, i) => {
-                      const dy = -((n - 1) * lineHeight) / 2 + i * lineHeight;
-                      const halfWidth = ctx.measureText(line).width / 2 + fs * 0.3;
-                      maxNeeded = Math.max(maxNeeded, Math.hypot(halfWidth, dy));
-                  });
-                  return maxNeeded;
-              };
-
-              // 在候选字号范围内，找到能让所有行都留在当前气泡基础半径内的最大字号
-              // 注：文字排布始终基于 baseRadius（未乘 sizeRatio），保证换行/字号结果与"整体缩放多少"无关，
-              // 最终渲染/碰撞半径 = baseRadius * sizeRatio，文字随之整体跟随缩放
-              const minFont = 12, maxFont = 26;
-              const availableRadius = this.baseRadius || 85;
-              let bestFont = minFont;
-              for (let fs = maxFont; fs >= minFont; fs -= 1) {
-                  if (radiusNeededFor(fs) <= availableRadius) { bestFont = fs; break; }
-              }
-
-              const minBaseRadius = Math.max(38, radiusNeededFor(bestFont));
-              this.baseRadius = Math.max(this.baseRadius || 0, minBaseRadius);
-              this.baseRadius = Math.min(this.baseRadius, 115);
-
-              this.radius = this.baseRadius * sizeRatio;
-              this.fontSize = bestFont * textRatio * sizeRatio;
-              this.mass = this.radius;
-          }
-
-          update(exclusionRect) {
-              // 表面波纹时间持续推进，与锁定/拖拽/速度无关，保证泡泡边缘始终有轻微的"呼吸"感
-              this.wobbleTime += 1;
-
-              if (this.locked) return;
-
-              if (this === draggedBubble) {
-                  this.vx = (mouseX - this.x) * 0.25;
-                  this.vy = (mouseY - this.y) * 0.25;
-                  this.x = mouseX;
-                  this.y = mouseY;
-                  return;
-              }
-
-              // 缓慢随机扰动（布朗运动感），让漂浮不呆板
-              this.wanderAngle += (Math.random() - 0.5) * 0.5;
-              this.vx += Math.cos(this.wanderAngle) * 0.035 * speedFactor;
-              this.vy += Math.sin(this.wanderAngle) * 0.035 * speedFactor;
-
-              // 极弱的中心引力，只防止气泡永远聚在边缘，不产生"聚拢"感
-              const cx = width / 2, cy = height / 2;
-              this.vx += (cx - this.x) * 0.00002;
-              this.vy += (cy - this.y) * 0.00002;
-
-              // 速度上下限：避免停滞，也避免过快；两者都随全局速度倍率缩放
-              const speed = Math.hypot(this.vx, this.vy);
-              const minSpeed = 0.35 * speedFactor;
-              const maxSpeed = 0.6 * speedFactor;
-              if (speedFactor <= 0.001) {
-                  this.vx = 0; this.vy = 0;
-              } else if (speed < minSpeed) {
-                  const boost = minSpeed / (speed || 1);
-                  this.vx *= boost * 1.6;
-                  this.vy *= boost * 1.6;
-              } else if (speed > maxSpeed) {
-                  const damp = maxSpeed / speed;
-                  this.vx *= damp;
-                  this.vy *= damp;
-              }
-
-              this.vx *= 0.995;
-              this.vy *= 0.995;
-
-              this.x += this.vx;
-              this.y += this.vy;
-
-              if (this.x - this.radius < 0) { this.x = this.radius; this.vx *= -0.9; }
-              else if (this.x + this.radius > width) { this.x = width - this.radius; this.vx *= -0.9; }
-              if (this.y - this.radius < 0) { this.y = this.radius; this.vy *= -0.9; }
-              else if (this.y + this.radius > height) { this.y = height - this.radius; this.vy *= -0.9; }
-
-              // 输入框展开时，把重叠到它区域的气泡直接推出（与速度倍率无关，即使速度调到0也会避让）
-              if (exclusionRect) {
-                  const nearestX = Math.max(exclusionRect.left, Math.min(this.x, exclusionRect.right));
-                  const nearestY = Math.max(exclusionRect.top, Math.min(this.y, exclusionRect.bottom));
-                  const dx = this.x - nearestX;
-                  const dy = this.y - nearestY;
-                  const dist = Math.hypot(dx, dy);
-                  if (dist < this.radius) {
-                      const push = this.radius - dist;
-                      if (dist > 0.01) {
-                          this.x += (dx / dist) * push;
-                          this.y += (dy / dist) * push;
-                      } else {
-                          const angle = Math.random() * Math.PI * 2;
-                          this.x += Math.cos(angle) * push;
-                          this.y += Math.sin(angle) * push;
-                      }
-                      this.x = Math.max(this.radius, Math.min(width - this.radius, this.x));
-                      this.y = Math.max(this.radius, Math.min(height - this.radius, this.y));
-                  }
-              }
-          }
-
-          draw() {
-              ctx.save();
-
-              const dragging = this === draggedBubble;
-              const inTrash = dragging && isOverTrash(mouseX, mouseY);
-
-              // 仿生抖动：圆周边缘按角度起伏的波纹路径（表面张力感），而不是整体平移
-              const wobbleOf = (angle) => {
-                  const w1 = Math.sin(angle * this.wobble1.freq + this.wobbleTime * this.wobble1.speed + this.wobble1.phase);
-                  const w2 = Math.sin(angle * this.wobble2.freq + this.wobbleTime * this.wobble2.speed + this.wobble2.phase);
-                  return 1 + (w1 * 0.005 + w2 * 0.005);
-              };
-              const wobblePath = () => {
-                  const steps = 48;
-                  ctx.beginPath();
-                  for (let i = 0; i <= steps; i++) {
-                      const angle = (i / steps) * Math.PI * 2;
-                      const r = this.radius * wobbleOf(angle);
-                      const px = this.x + Math.cos(angle) * r;
-                      const py = this.y + Math.sin(angle) * r;
-                      if (i === 0) ctx.moveTo(px, py);
-                      else ctx.lineTo(px, py);
-                  }
-                  ctx.closePath();
-              };
-
-              const gradient = ctx.createRadialGradient(
-                  this.x - this.radius * 0.35, this.y - this.radius * 0.35, this.radius * 0.15,
-                  this.x, this.y, this.radius
-              );
-              gradient.addColorStop(0, shade(this.color, 55));
-              gradient.addColorStop(0.55, this.color);
-              gradient.addColorStop(1, shade(this.color, -35));
-
-              wobblePath();
-              ctx.fillStyle = gradient;
-              ctx.globalAlpha = (inTrash ? 0.4 : 1) * this.alpha;
-              ctx.fill();
-
-              // 高光反光点，配合透明度让气泡更有"泡泡"的通透感
-              const highlightAlpha = (inTrash ? 0.4 : 1) * this.alpha * 0.55;
-              ctx.globalAlpha = highlightAlpha;
-              ctx.beginPath();
-              ctx.ellipse(
-                  this.x - this.radius * 0.32, this.y - this.radius * 0.4,
-                  this.radius * 0.22, this.radius * 0.13, -0.5, 0, Math.PI * 2
-              );
-              ctx.fillStyle = '#ffffff';
-              ctx.fill();
-
-              wobblePath();
-              ctx.lineWidth = this.locked ? 2.5 : 1.5;
-              ctx.strokeStyle = this.locked ? 'rgba(250, 204, 21, 0.9)' : 'rgba(255,255,255,0.35)';
-              ctx.globalAlpha = inTrash ? 0.4 : 1;
-              ctx.stroke();
-              ctx.globalAlpha = 1;
-
-              // 文字：高对比填色 + 反色描边（白字黑边/黑字白边），尽量填满气泡且始终易读
-              const textColor = textColorFor(this.color);
-              const strokeColor = textColor === '#ffffff' ? 'rgba(0,0,0,0.85)' : 'rgba(255,255,255,0.85)';
-              const fontSize = Math.max(11, Math.min(30, this.fontSize));
-              ctx.font = `700 ${fontSize}px -apple-system, sans-serif`;
-              ctx.textAlign = 'center';
-              ctx.textBaseline = 'middle';
-              ctx.lineJoin = 'round';
-              ctx.miterLimit = 2;
-              const lineHeight = fontSize * 1.2;
-              const startY = this.y - ((this.lines.length - 1) * lineHeight) / 2;
-              this.lines.forEach((line, i) => {
-                  const ly = startY + i * lineHeight;
-                  ctx.lineWidth = Math.max(2, fontSize * 0.16);
-                  ctx.strokeStyle = strokeColor;
-                  ctx.strokeText(line, this.x, ly);
-                  ctx.fillStyle = textColor;
-                  ctx.fillText(line, this.x, ly);
-              });
-
-              if (this.locked) {
-                  ctx.font = `${Math.max(12, this.radius * 0.28)}px sans-serif`;
-                  ctx.fillStyle = '#facc15';
-                  ctx.fillText('📌', this.x + this.radius * 0.62, this.y - this.radius * 0.62);
-              }
-              if (this.detail && this.detail.trim()) {
-                  ctx.font = `${Math.max(10, this.radius * 0.22)}px sans-serif`;
-                  ctx.fillStyle = 'rgba(255,255,255,0.85)';
-                  ctx.fillText('📝', this.x - this.radius * 0.62, this.y - this.radius * 0.62);
-              }
-
-              ctx.restore();
-          }
-      }
-
-      function handleCollisions() {
-          for (let i = 0; i < bubbles.length; i++) {
-              for (let j = i + 1; j < bubbles.length; j++) {
-                  const b1 = bubbles[i], b2 = bubbles[j];
-                  const dx = b2.x - b1.x, dy = b2.y - b1.y;
-                  const distance = Math.hypot(dx, dy) || 0.001;
-                  const minDist = b1.radius + b2.radius;
-
-                  if (distance < minDist) {
-                      const overlap = minDist - distance;
-                      const nx = dx / distance, ny = dy / distance;
-
-                      if (b1 !== draggedBubble && !b1.locked) { b1.x -= nx * overlap * 0.5; b1.y -= ny * overlap * 0.5; }
-                      if (b2 !== draggedBubble && !b2.locked) { b2.x += nx * overlap * 0.5; b2.y += ny * overlap * 0.5; }
-
-                      const kx = b1.vx - b2.vx, ky = b1.vy - b2.vy;
-                      const p = 2 * (nx * kx + ny * ky) / (b1.mass + b2.mass);
-
-                      if (b1 !== draggedBubble && !b1.locked) { b1.vx -= p * b2.mass * nx; b1.vy -= p * b2.mass * ny; }
-                      if (b2 !== draggedBubble && !b2.locked) { b2.vx += p * b1.mass * nx; b2.vy += p * b1.mass * ny; }
-                  }
-              }
-          }
-      }
-
-      // 输入框展开时，返回它在画布坐标系下占据的矩形（留一点安全边距），供气泡避让；收起时返回 null
-      function getInputExclusionRect() {
-          if (!inputContainer.classList.contains('revealed')) return null;
-          const rect = inputContainer.getBoundingClientRect();
-          const canvasRect = canvas.getBoundingClientRect();
-          const margin = 20;
-          return {
-              left: rect.left - canvasRect.left - margin,
-              right: rect.right - canvasRect.left + margin,
-              top: rect.top - canvasRect.top - margin,
-              bottom: rect.bottom - canvasRect.top + margin
-          };
-      }
-
-      function animate() {
-          ctx.clearRect(0, 0, width, height);
-          handleCollisions();
-          const exclusionRect = getInputExclusionRect();
-          bubbles.forEach(b => { b.update(exclusionRect); b.draw(); });
-          requestAnimationFrame(animate);
-      }
-
-      // ---------- 创建/删除 ----------
-      function addBubble(text, opts) {
-          opts = opts || {};
-          // 随机模式下且未显式指定颜色时，每个新气泡都重新随机取色，并同步更新选色器上的预览
-          if (colorMode === 'random' && !opts.color) {
-              selectedColor = randomColor();
-              const randomDot = colorPicker.querySelector('[data-role="random"]');
-              if (randomDot) randomDot.style.background = selectedColor;
-          }
-          const b = new Bubble(Object.assign({ text, color: selectedColor, alpha: selectedAlpha }, opts));
-          bubbles.push(b);
-          updateCounter();
-          scheduleSave();
-          return b;
-      }
-
-      function removeBubble(bubble) {
-          const idx = bubbles.indexOf(bubble);
-          if (idx === -1) return;
-          bubbles.splice(idx, 1);
-          recentlyDeleted = bubble;
-          updateCounter();
-          scheduleSave();
-          showToast(bubble.text);
-      }
-
-      function updateCounter() {
-          counterEl.textContent = `${bubbles.length} 个灵感`;
-      }
-
-      function showToast(text) {
-          toastText.textContent = `已删除「${text.length > 12 ? text.slice(0, 12) + '…' : text}」`;
-          toast.classList.add('visible');
-          clearTimeout(toastTimer);
-          toastTimer = setTimeout(() => toast.classList.remove('visible'), 4000);
-      }
-
-      toastUndo.addEventListener('click', () => {
-          if (recentlyDeleted) {
-              bubbles.push(recentlyDeleted);
-              recentlyDeleted = null;
-              updateCounter();
-              scheduleSave();
-          }
-          toast.classList.remove('visible');
-          clearTimeout(toastTimer);
+      const randomDot = document.createElement('div');
+      randomDot.className = 'color-dot random-dot';
+      randomDot.dataset.role = 'random';
+      randomDot.textContent = '随';
+      randomDot.title = opts.onModeChange ? '随机色：点击后，每个新气泡都会自动换一个新颜色' : '随机色（换一个）';
+      if (opts.isRandomMode && opts.isRandomMode()) randomDot.classList.add('selected');
+      randomDot.addEventListener('click', (e) => {
+        e.stopPropagation();
+        if (opts.onModeChange) opts.onModeChange('random');
+        const color = randomColor();
+        onPick(color);
+        refreshSelected();
       });
+      wrapperEl.appendChild(randomDot);
 
-      // ---------- 持久化 ----------
-      function scheduleSave() {
-          clearTimeout(saveTimer);
-          saveTimer = setTimeout(saveToStorage, 400);
+      const rainbowWrap = document.createElement('div');
+      rainbowWrap.style.position = 'relative';
+      rainbowWrap.style.width = '22px';
+      rainbowWrap.style.height = '22px';
+      const rainbowDot = document.createElement('div');
+      rainbowDot.className = 'color-dot rainbow';
+      rainbowDot.title = '万色：点击选取任意颜色';
+      const rainbowInput = document.createElement('input');
+      rainbowInput.type = 'color';
+      rainbowInput.className = 'rainbow-input-el';
+      rainbowInput.style.position = 'absolute';
+      rainbowInput.style.opacity = '0';
+      rainbowInput.style.width = '100%';
+      rainbowInput.style.height = '100%';
+      rainbowInput.style.left = '0';
+      rainbowInput.style.top = '0';
+      rainbowInput.style.cursor = 'pointer';
+      const current = getSelected();
+      rainbowInput.value = /^#[0-9a-f]{6}$/i.test(current) ? current : DEFAULT_COLOR;
+      rainbowInput.addEventListener('input', (e) => {
+        if (opts.onModeChange) opts.onModeChange('fixed');
+        onPick(e.target.value);
+        refreshSelected();
+      });
+      rainbowWrap.appendChild(rainbowDot);
+      rainbowWrap.appendChild(rainbowInput);
+      wrapperEl.appendChild(rainbowWrap);
+
+      if (opts.alpha) {
+        const alphaWrap = document.createElement('div');
+        alphaWrap.className = 'alpha-wrap';
+        alphaWrap.title = '透明度（0=全透明，10=不透明）';
+
+        const alphaSlider = document.createElement('input');
+        alphaSlider.type = 'range';
+        alphaSlider.className = 'alpha-slider';
+        alphaSlider.min = '0';
+        alphaSlider.max = '10';
+        alphaSlider.step = '1';
+        alphaSlider.value = String(Math.round(opts.alpha.get() * 10));
+
+        const alphaVal = document.createElement('span');
+        alphaVal.className = 'alpha-val';
+        alphaVal.textContent = alphaSlider.value;
+
+        alphaSlider.addEventListener('input', (e) => {
+          const level = Number(e.target.value);
+          opts.alpha.set(level / 10);
+          alphaVal.textContent = String(level);
+        });
+
+        alphaWrap.appendChild(alphaSlider);
+        alphaWrap.appendChild(alphaVal);
+        wrapperEl.appendChild(alphaWrap);
+      }
+    }
+
+    buildColorPicker(
+      colorPicker,
+      (color) => { selectedColor = color; },
+      () => selectedColor,
+      {
+        onModeChange: (mode) => { colorMode = mode; },
+        isRandomMode: () => colorMode === 'random',
+        alpha: { get: () => selectedAlpha, set: (v) => { selectedAlpha = v; } }
+      }
+    );
+
+    // ---------- 气泡类 ----------
+    class Bubble {
+      constructor(opts) {
+        this.id = opts.id || (bubbleIdSeq++);
+        this.text = opts.text;
+        this.detail = opts.detail || '';
+        this.color = opts.color || DEFAULT_COLOR;
+        this.alpha = typeof opts.alpha === 'number' ? opts.alpha : 1;
+        this.locked = !!opts.locked;
+        this.url = opts.url || DEFAULT_URL;
+        this.createdAt = opts.createdAt || Date.now();
+        this.category = opts.category || 'recent';
+        this.quadrant = (typeof opts.quadrant === 'number') ? opts.quadrant : null;
+
+        this.baseRadius = Math.max(38, Math.min(85, this.text.length * 6 + Math.random() * 24));
+        this.radius = this.baseRadius;
+        this.lines = [];
+        this.fontSize = 15;
+        this.computeLayout();
+
+        this.x = typeof opts.x === 'number' ? opts.x : Math.random() * (width - this.radius * 2) + this.radius;
+        this.y = typeof opts.y === 'number' ? opts.y : Math.random() * (height - this.radius * 2) + this.radius;
+
+        this.vx = typeof opts.vx === 'number' ? opts.vx : (Math.random() - 0.5) * 3.2;
+        this.vy = typeof opts.vy === 'number' ? opts.vy : (Math.random() - 0.5) * 3.2;
+
+        this.wanderAngle = Math.random() * Math.PI * 2;
+
+        // 仿生抖动：让圆周边缘本身自然起伏（表面张力感），而不是整个泡泡平移
+        // 叠加两组不同频率/相位的正弦波纹，避免看起来像规则的齿轮状
+        this.wobble1 = { freq: 3 + Math.floor(Math.random() * 2), phase: Math.random() * Math.PI * 2, speed: 0.05 + Math.random() * 0.03 };
+        this.wobble2 = { freq: 5 + Math.floor(Math.random() * 3), phase: Math.random() * Math.PI * 2, speed: 0.07 + Math.random() * 0.04 };
+        this.wobbleTime = 0;
       }
 
-      function saveToStorage() {
-          const data = bubbles.map(b => ({
-              id: b.id, text: b.text, detail: b.detail, color: b.color, alpha: b.alpha, locked: b.locked, url: b.url,
-              createdAt: b.createdAt, x: b.x, y: b.y, vx: b.vx, vy: b.vy
-          }));
-          try { localStorage.setItem(STORAGE_KEY, JSON.stringify(data)); } catch (e) {}
+      setText(text, detail) {
+        this.text = text;
+        this.detail = detail || '';
+        this.computeLayout();
       }
 
-      function saveSettings() {
-          try { localStorage.setItem(SETTINGS_KEY, JSON.stringify({ speedFactor, textRatio, sizeRatio })); } catch (e) {}
+      // 默认不按字符数强制换行：只在用户手动插入的换行处（编辑面板里 Option/Alt+Enter）分行，
+      // 单行文字过长时靠字体自动变小 + 气泡半径变大来容纳；两者都到极限后才截断加省略号
+      computeLayout() {
+        let lines = this.text.split('\n').slice(0, 3);
+        if (this.text.split('\n').length > 3) {
+          lines[2] = lines[2].slice(0, Math.max(1, lines[2].length - 1)) + '…';
+        }
+        this.lines = lines.length ? lines : [''];
+
+        // 给定字号，按圆弦几何算出容纳全部行所需的最小半径：
+        // 每行中心位于圆心上下 dy 处，该行要留在圆内需要 R >= sqrt((宽度/2)^2 + dy^2)
+        const radiusNeededFor = (fs) => {
+          ctx.font = `700 ${fs}px -apple-system, sans-serif`;
+          const lineHeight = fs * 1.2;
+          const n = this.lines.length;
+          let maxNeeded = 0;
+          this.lines.forEach((line, i) => {
+            const dy = -((n - 1) * lineHeight) / 2 + i * lineHeight;
+            const halfWidth = ctx.measureText(line).width / 2 + fs * 0.3;
+            maxNeeded = Math.max(maxNeeded, Math.hypot(halfWidth, dy));
+          });
+          return maxNeeded;
+        };
+
+        // 在候选字号范围内，找到能让所有行都留在气泡最大允许半径(115)内的最大字号；
+        // 注：文字排布始终基于 baseRadius（未乘 sizeRatio），保证换行/字号结果与"整体缩放多少"无关，
+        // 最终渲染/碰撞半径 = baseRadius * sizeRatio，文字随之整体跟随缩放
+        const minFont = 12, maxFont = 26;
+        const maxAllowedRadius = 115;
+        let bestFont = minFont;
+        for (let fs = maxFont; fs >= minFont; fs -= 1) {
+          if (radiusNeededFor(fs) <= maxAllowedRadius) { bestFont = fs; break; }
+        }
+
+        // 即使用最小字号，单行文字仍可能超出气泡最大半径（超长文本）：逐字截断加省略号直到能容下
+        let guard = 0;
+        while (radiusNeededFor(minFont) > maxAllowedRadius && guard < 200) {
+          const longestIdx = this.lines.reduce((best, l, i) => l.length > this.lines[best].length ? i : best, 0);
+          if (this.lines[longestIdx].length <= 1) break;
+          this.lines[longestIdx] = this.lines[longestIdx].slice(0, -2) + '…';
+          guard += 1;
+        }
+        if (radiusNeededFor(bestFont) > maxAllowedRadius) bestFont = minFont;
+
+        const minBaseRadius = Math.max(38, radiusNeededFor(bestFont));
+        this.baseRadius = Math.max(this.baseRadius || 0, minBaseRadius);
+        this.baseRadius = Math.min(this.baseRadius, maxAllowedRadius);
+
+        this.radius = this.baseRadius * sizeRatio;
+        this.fontSize = bestFont * textRatio * sizeRatio;
+        this.mass = this.radius;
       }
 
-      function loadSettings() {
-          if (window.__INITIAL_SETTINGS__) {
-              const s = window.__INITIAL_SETTINGS__;
-              if (typeof s.speedFactor === 'number') speedFactor = s.speedFactor;
-              if (typeof s.textRatio === 'number') textRatio = s.textRatio;
-              if (typeof s.sizeRatio === 'number') sizeRatio = s.sizeRatio;
-              return;
+      update(exclusionRect) {
+        // 表面波纹时间持续推进，与锁定/拖拽/速度无关，保证泡泡边缘始终有轻微的"呼吸"感
+        this.wobbleTime += 1;
+
+        if (this.locked) return;
+
+        if (this === draggedBubble) {
+          this.vx = (mouseX - this.x) * 0.25;
+          this.vy = (mouseY - this.y) * 0.25;
+          this.x = mouseX;
+          this.y = mouseY;
+          return;
+        }
+
+        // 缓慢随机扰动（布朗运动感），让漂浮不呆板
+        this.wanderAngle += (Math.random() - 0.5) * 0.5;
+        this.vx += Math.cos(this.wanderAngle) * 0.035 * speedFactor;
+        this.vy += Math.sin(this.wanderAngle) * 0.035 * speedFactor;
+
+        // 极弱的中心引力，只防止气泡永远聚在边缘，不产生"聚拢"感
+        const cx = width / 2, cy = height / 2;
+        this.vx += (cx - this.x) * 0.00002;
+        this.vy += (cy - this.y) * 0.00002;
+
+        // 速度上下限：避免停滞，也避免过快；两者都随全局速度倍率缩放
+        const speed = Math.hypot(this.vx, this.vy);
+        const minSpeed = 0.35 * speedFactor;
+        const maxSpeed = 0.6 * speedFactor;
+        if (speedFactor <= 0.001) {
+          this.vx = 0; this.vy = 0;
+        } else if (speed < minSpeed) {
+          const boost = minSpeed / (speed || 1);
+          this.vx *= boost * 1.6;
+          this.vy *= boost * 1.6;
+        } else if (speed > maxSpeed) {
+          const damp = maxSpeed / speed;
+          this.vx *= damp;
+          this.vy *= damp;
+        }
+
+        this.vx *= 0.995;
+        this.vy *= 0.995;
+
+        this.x += this.vx;
+        this.y += this.vy;
+
+        if (this.x - this.radius < 0) { this.x = this.radius; this.vx *= -0.9; }
+        else if (this.x + this.radius > width) { this.x = width - this.radius; this.vx *= -0.9; }
+        if (this.y - this.radius < 0) { this.y = this.radius; this.vy *= -0.9; }
+        else if (this.y + this.radius > height) { this.y = height - this.radius; this.vy *= -0.9; }
+        // 气泡直径大于画布（极窄窗口/激进缩放）时，上面的"留出半径"反弹会把气泡推出边界，这里兜底夹回可视范围内
+        this.x = clampAxis(this.x, this.radius, width);
+        this.y = clampAxis(this.y, this.radius, height);
+
+        // 隔离网格开启时，把气泡约束在其所属格子内漂浮（越界即反弹，与拖拽跨格子逻辑互不冲突）
+        const grid = gridState[this.category];
+        if (grid && grid.enabled) {
+          if (this.quadrant === null) this.quadrant = computeQuadrant(this.x, this.y, grid);
+          const vx = grid.splitX * width, vy = grid.splitY * height;
+          const left = (this.quadrant === 0 || this.quadrant === 2) ? 0 : vx;
+          const right = (this.quadrant === 0 || this.quadrant === 2) ? vx : width;
+          const top = (this.quadrant === 0 || this.quadrant === 1) ? 0 : vy;
+          const bottom = (this.quadrant === 0 || this.quadrant === 1) ? vy : height;
+          if (this.x - this.radius < left) { this.x = left + this.radius; this.vx *= -0.9; }
+          else if (this.x + this.radius > right) { this.x = right - this.radius; this.vx *= -0.9; }
+          if (this.y - this.radius < top) { this.y = top + this.radius; this.vy *= -0.9; }
+          else if (this.y + this.radius > bottom) { this.y = bottom - this.radius; this.vy *= -0.9; }
+          this.x = Math.max(left + Math.min(this.radius, (right - left) / 2), Math.min(right - Math.min(this.radius, (right - left) / 2), this.x));
+          this.y = Math.max(top + Math.min(this.radius, (bottom - top) / 2), Math.min(bottom - Math.min(this.radius, (bottom - top) / 2), this.y));
+        }
+
+        // 输入框展开时，把重叠到它区域的气泡直接推出（与速度倍率无关，即使速度调到0也会避让）
+        if (exclusionRect) {
+          const nearestX = Math.max(exclusionRect.left, Math.min(this.x, exclusionRect.right));
+          const nearestY = Math.max(exclusionRect.top, Math.min(this.y, exclusionRect.bottom));
+          const dx = this.x - nearestX;
+          const dy = this.y - nearestY;
+          const dist = Math.hypot(dx, dy);
+          if (dist < this.radius) {
+            const push = this.radius - dist;
+            if (dist > 0.01) {
+              this.x += (dx / dist) * push;
+              this.y += (dy / dist) * push;
+            } else {
+              const angle = Math.random() * Math.PI * 2;
+              this.x += Math.cos(angle) * push;
+              this.y += Math.sin(angle) * push;
+            }
+            this.x = Math.max(this.radius, Math.min(width - this.radius, this.x));
+            this.y = Math.max(this.radius, Math.min(height - this.radius, this.y));
           }
-          try {
-              const raw = localStorage.getItem(SETTINGS_KEY);
-              if (raw) {
-                  const parsed = JSON.parse(raw);
-                  if (typeof parsed.speedFactor === 'number') speedFactor = parsed.speedFactor;
-                  if (typeof parsed.textRatio === 'number') textRatio = parsed.textRatio;
-                  if (typeof parsed.sizeRatio === 'number') sizeRatio = parsed.sizeRatio;
-              }
-          } catch (e) {}
+        }
       }
 
-      function loadFromStorage() {
-          let raw = null;
-          try { raw = localStorage.getItem(STORAGE_KEY); } catch (e) {}
-          if (window.__INITIAL_BUBBLES__ && window.__INITIAL_BUBBLES__.length) {
-              return window.__INITIAL_BUBBLES__;
+      draw() {
+        ctx.save();
+
+        const dragging = this === draggedBubble;
+        const inTrash = dragging && isOverTrash(mouseX, mouseY);
+
+        // 仿生抖动：圆周边缘按角度起伏的波纹路径（表面张力感），而不是整体平移
+        const wobbleOf = (angle) => {
+          const w1 = Math.sin(angle * this.wobble1.freq + this.wobbleTime * this.wobble1.speed + this.wobble1.phase);
+          const w2 = Math.sin(angle * this.wobble2.freq + this.wobbleTime * this.wobble2.speed + this.wobble2.phase);
+          return 1 + (w1 * 0.005 + w2 * 0.005);
+        };
+        const wobblePath = () => {
+          const steps = 48;
+          ctx.beginPath();
+          for (let i = 0; i <= steps; i++) {
+            const angle = (i / steps) * Math.PI * 2;
+            const r = this.radius * wobbleOf(angle);
+            const px = this.x + Math.cos(angle) * r;
+            const py = this.y + Math.sin(angle) * r;
+            if (i === 0) ctx.moveTo(px, py);
+            else ctx.lineTo(px, py);
           }
+          ctx.closePath();
+        };
+
+        const gradient = ctx.createRadialGradient(
+          this.x - this.radius * 0.35, this.y - this.radius * 0.35, this.radius * 0.15,
+          this.x, this.y, this.radius
+        );
+        gradient.addColorStop(0, shade(this.color, 55));
+        gradient.addColorStop(0.55, this.color);
+        gradient.addColorStop(1, shade(this.color, -35));
+
+        wobblePath();
+        ctx.fillStyle = gradient;
+        ctx.globalAlpha = (inTrash ? 0.4 : 1) * this.alpha;
+        ctx.fill();
+
+        // 高光反光点，配合透明度让气泡更有"泡泡"的通透感
+        const highlightAlpha = (inTrash ? 0.4 : 1) * this.alpha * 0.55;
+        ctx.globalAlpha = highlightAlpha;
+        ctx.beginPath();
+        ctx.ellipse(
+          this.x - this.radius * 0.32, this.y - this.radius * 0.4,
+          this.radius * 0.22, this.radius * 0.13, -0.5, 0, Math.PI * 2
+        );
+        ctx.fillStyle = '#ffffff';
+        ctx.fill();
+
+        wobblePath();
+        ctx.lineWidth = this.locked ? 2.5 : 1.5;
+        ctx.strokeStyle = this.locked ? 'rgba(250, 204, 21, 0.9)' : 'rgba(255,255,255,0.35)';
+        ctx.globalAlpha = inTrash ? 0.4 : 1;
+        ctx.stroke();
+        ctx.globalAlpha = 1;
+
+        // 文字：高对比填色 + 反色描边（白字黑边/黑字白边），尽量填满气泡且始终易读
+        const textColor = textColorFor(this.color);
+        const strokeColor = textColor === '#ffffff' ? 'rgba(0,0,0,0.85)' : 'rgba(255,255,255,0.85)';
+        const fontSize = Math.max(11, Math.min(30, this.fontSize));
+        ctx.font = `700 ${fontSize}px -apple-system, sans-serif`;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.lineJoin = 'round';
+        ctx.miterLimit = 2;
+        const lineHeight = fontSize * 1.2;
+        const startY = this.y - ((this.lines.length - 1) * lineHeight) / 2;
+        this.lines.forEach((line, i) => {
+          const ly = startY + i * lineHeight;
+          ctx.lineWidth = Math.max(2, fontSize * 0.16);
+          ctx.strokeStyle = strokeColor;
+          ctx.strokeText(line, this.x, ly);
+          ctx.fillStyle = textColor;
+          ctx.fillText(line, this.x, ly);
+        });
+
+        if (this.locked) {
+          ctx.font = `${Math.max(12, this.radius * 0.28)}px sans-serif`;
+          ctx.fillStyle = '#facc15';
+          ctx.fillText('📌', this.x + this.radius * 0.62, this.y - this.radius * 0.62);
+        }
+        if (this.detail && this.detail.trim()) {
+          ctx.font = `${Math.max(10, this.radius * 0.22)}px sans-serif`;
+          ctx.fillStyle = 'rgba(255,255,255,0.85)';
+          ctx.fillText('📝', this.x - this.radius * 0.62, this.y - this.radius * 0.62);
+        }
+
+        ctx.restore();
+      }
+    }
+
+    // 分类过滤：所有渲染/物理/命中检测只作用于当前分类下的气泡
+    function visibleBubbles() {
+      return bubbles.filter(b => b.category === activeCategory);
+    }
+
+    // 根据坐标与当前网格分割线，判断落在哪个象限（0=左上 1=右上 2=左下 3=右下）
+    function computeQuadrant(x, y, grid) {
+      const vx = grid.splitX * width, vy = grid.splitY * height;
+      const isLeft = x < vx, isTop = y < vy;
+      if (isLeft && isTop) return 0;
+      if (!isLeft && isTop) return 1;
+      if (isLeft && !isTop) return 2;
+      return 3;
+    }
+
+    function handleCollisions(list) {
+      for (let i = 0; i < list.length; i++) {
+        for (let j = i + 1; j < list.length; j++) {
+          const b1 = list[i], b2 = list[j];
+          const dx = b2.x - b1.x, dy = b2.y - b1.y;
+          const distance = Math.hypot(dx, dy) || 0.001;
+          const minDist = b1.radius + b2.radius;
+
+          if (distance < minDist) {
+            const overlap = minDist - distance;
+            const nx = dx / distance, ny = dy / distance;
+
+            if (b1 !== draggedBubble && !b1.locked) { b1.x -= nx * overlap * 0.5; b1.y -= ny * overlap * 0.5; }
+            if (b2 !== draggedBubble && !b2.locked) { b2.x += nx * overlap * 0.5; b2.y += ny * overlap * 0.5; }
+
+            const kx = b1.vx - b2.vx, ky = b1.vy - b2.vy;
+            const p = 2 * (nx * kx + ny * ky) / (b1.mass + b2.mass);
+
+            if (b1 !== draggedBubble && !b1.locked) { b1.vx -= p * b2.mass * nx; b1.vy -= p * b2.mass * ny; }
+            if (b2 !== draggedBubble && !b2.locked) { b2.vx += p * b1.mass * nx; b2.vy += p * b1.mass * ny; }
+          }
+        }
+      }
+    }
+
+    // 输入框展开时，返回它在画布坐标系下占据的矩形（留一点安全边距），供气泡避让；收起时返回 null
+    function getInputExclusionRect() {
+      if (!inputContainer.classList.contains('revealed')) return null;
+      const rect = inputContainer.getBoundingClientRect();
+      const canvasRect = canvas.getBoundingClientRect();
+      const margin = 20;
+      return {
+        left: rect.left - canvasRect.left - margin,
+        right: rect.right - canvasRect.left + margin,
+        top: rect.top - canvasRect.top - margin,
+        bottom: rect.bottom - canvasRect.top + margin
+      };
+    }
+
+    function animate() {
+      ctx.clearRect(0, 0, width, height);
+      const visible = visibleBubbles();
+      handleCollisions(visible);
+      const exclusionRect = getInputExclusionRect();
+      visible.forEach(b => { b.update(exclusionRect); b.draw(); });
+      requestAnimationFrame(animate);
+    }
+
+    // ---------- 创建/删除 ----------
+    function addBubble(text, opts) {
+      opts = opts || {};
+      // 随机模式下且未显式指定颜色时，每个新气泡都重新随机取色，并同步更新选色器上的预览
+      if (colorMode === 'random' && !opts.color) {
+        selectedColor = randomColor();
+        const randomDot = colorPicker.querySelector('[data-role="random"]');
+        if (randomDot) randomDot.style.background = selectedColor;
+      }
+      const b = new Bubble(Object.assign({ text, color: selectedColor, alpha: selectedAlpha, category: activeCategory }, opts));
+      bubbles.push(b);
+      updateCounter();
+      scheduleSave();
+      return b;
+    }
+
+    function removeBubble(bubble) {
+      const idx = bubbles.indexOf(bubble);
+      if (idx === -1) return;
+      bubbles.splice(idx, 1);
+      recentlyDeleted = bubble;
+      updateCounter();
+      scheduleSave();
+      showToast(bubble.text);
+    }
+
+    function updateCounter() {
+      const inCategory = bubbles.filter(b => b.category === activeCategory).length;
+      counterEl.textContent = bubbles.length === inCategory
+        ? `${inCategory} 个灵感`
+        : `${inCategory} 个灵感（共 ${bubbles.length}）`;
+    }
+
+    function showToast(text) {
+      toastText.textContent = `已删除「${text.length > 12 ? text.slice(0, 12) + '…' : text}」`;
+      toast.classList.add('visible');
+      clearTimeout(toastTimer);
+      toastTimer = setTimeout(() => toast.classList.remove('visible'), 4000);
+    }
+
+    toastUndo.addEventListener('click', () => {
+      if (recentlyDeleted) {
+        bubbles.push(recentlyDeleted);
+        recentlyDeleted = null;
+        updateCounter();
+        scheduleSave();
+      }
+      toast.classList.remove('visible');
+      clearTimeout(toastTimer);
+    });
+
+    // ---------- 持久化 ----------
+    function scheduleSave() {
+      clearTimeout(saveTimer);
+      saveTimer = setTimeout(() => { saveToStorage(); saveCategories(); }, 400);
+    }
+
+    function bubbleToData(b) {
+      return {
+        id: b.id, text: b.text, detail: b.detail, color: b.color, alpha: b.alpha, locked: b.locked, url: b.url,
+        createdAt: b.createdAt, x: b.x, y: b.y, vx: b.vx, vy: b.vy, category: b.category, quadrant: b.quadrant
+      };
+    }
+
+    function saveToStorage() {
+      const data = bubbles.map(bubbleToData);
+      try { localStorage.setItem(STORAGE_KEY, JSON.stringify(data)); } catch (e) {}
+    }
+
+    function saveSettings() {
+      try { localStorage.setItem(SETTINGS_KEY, JSON.stringify({ speedFactor, textRatio, sizeRatio })); } catch (e) {}
+    }
+
+    function saveCategories() {
+      try { localStorage.setItem(CATEGORY_KEY, JSON.stringify({ categories, activeCategory, gridState })); } catch (e) {}
+    }
+
+    function loadSettings() {
+      if (window.__INITIAL_SETTINGS__) {
+        const s = window.__INITIAL_SETTINGS__;
+        if (typeof s.speedFactor === 'number') speedFactor = s.speedFactor;
+        if (typeof s.textRatio === 'number') textRatio = s.textRatio;
+        if (typeof s.sizeRatio === 'number') sizeRatio = s.sizeRatio;
+        return;
+      }
+      try {
+        const raw = localStorage.getItem(SETTINGS_KEY);
+        if (raw) {
+          const parsed = JSON.parse(raw);
+          if (typeof parsed.speedFactor === 'number') speedFactor = parsed.speedFactor;
+          if (typeof parsed.textRatio === 'number') textRatio = parsed.textRatio;
+          if (typeof parsed.sizeRatio === 'number') sizeRatio = parsed.sizeRatio;
+        }
+      } catch (e) {}
+    }
+
+    function loadCategories() {
+      if (window.__INITIAL_CATEGORIES__) {
+        const c = window.__INITIAL_CATEGORIES__;
+        if (Array.isArray(c.categories) && c.categories.length) categories = c.categories;
+        if (c.activeCategory) activeCategory = c.activeCategory;
+        if (c.gridState) gridState = c.gridState;
+      } else {
+        try {
+          const raw = localStorage.getItem(CATEGORY_KEY);
           if (raw) {
-              try {
-                  const parsed = JSON.parse(raw);
-                  if (Array.isArray(parsed) && parsed.length) return parsed;
-              } catch (e) {}
+            const parsed = JSON.parse(raw);
+            if (Array.isArray(parsed.categories) && parsed.categories.length) categories = parsed.categories;
+            if (parsed.activeCategory) activeCategory = parsed.activeCategory;
+            if (parsed.gridState) gridState = parsed.gridState;
           }
-          return null;
+        } catch (e) {}
       }
+      if (!categories.some(c => c.id === activeCategory)) activeCategory = categories[0] ? categories[0].id : 'recent';
+      categoryIdSeq = categories.reduce((max, c) => {
+        const m = /^cat_(\d+)$/.exec(c.id);
+        return m ? Math.max(max, Number(m[1]) + 1) : max;
+      }, 1);
+      // 兼容旧版本存档：早期分类数据没有 color 字段，这里按顺序补齐，避免所有 tab 同色
+      categories.forEach((c, i) => { if (!c.color) c.color = CATEGORY_COLORS[i % CATEGORY_COLORS.length]; });
+    }
 
-      function initBubbles() {
-          loadSettings();
-          speedSlider.value = String(Math.round(speedFactor * 100));
-          speedVal.textContent = `${Math.round(speedFactor * 100)}%`;
-          textRatioSlider.value = String(Math.round(textRatio * 100));
-          textRatioVal.textContent = `${Math.round(textRatio * 100)}%`;
-          sizeSlider.value = String(Math.round(sizeRatio * 100));
-          sizeVal.textContent = `${Math.round(sizeRatio * 100)}%`;
+    function loadFromStorage() {
+      let raw = null;
+      try { raw = localStorage.getItem(STORAGE_KEY); } catch (e) {}
+      if (window.__INITIAL_BUBBLES__ && window.__INITIAL_BUBBLES__.length) {
+        return window.__INITIAL_BUBBLES__;
+      }
+      if (raw) {
+        try {
+          const parsed = JSON.parse(raw);
+          if (Array.isArray(parsed) && parsed.length) return parsed;
+        } catch (e) {}
+      }
+      return null;
+    }
 
-          const stored = loadFromStorage();
-          if (stored) {
-              stored.forEach(d => {
-                  const b = new Bubble(d);
-                  bubbleIdSeq = Math.max(bubbleIdSeq, (d.id || 0) + 1);
-                  bubbles.push(b);
-              });
-          } else {
-              DEFAULT_BUBBLES.forEach((d, i) => setTimeout(() => addBubble(d.text, { color: d.color, alpha: d.alpha, detail: d.detail, url: d.url }), i * 150));
-          }
+    function initBubbles() {
+      loadSettings();
+      loadCategories();
+      speedSlider.value = String(Math.round(speedFactor * 100));
+      speedVal.textContent = `${Math.round(speedFactor * 100)}%`;
+      textRatioSlider.value = String(Math.round(textRatio * 100));
+      textRatioVal.textContent = `${Math.round(textRatio * 100)}%`;
+      sizeSlider.value = String(Math.round(sizeRatio * 100));
+      sizeVal.textContent = `${Math.round(sizeRatio * 100)}%`;
+      renderCategoryPanel();
+      syncGridUiToActiveCategory();
+
+      const stored = loadFromStorage();
+      if (stored) {
+        stored.forEach(d => {
+          const b = new Bubble(d);
+          bubbleIdSeq = Math.max(bubbleIdSeq, (d.id || 0) + 1);
+          bubbles.push(b);
+        });
+      } else {
+        const savedActiveCategory = activeCategory;
+        DEFAULT_BUBBLES.forEach((d, i) => setTimeout(() => addBubble(d.text, { color: d.color, alpha: d.alpha, detail: d.detail, url: d.url }), i * 150));
+        // 除了「最近」（已有上面的 DEFAULT_BUBBLES 作为初始内容），其余默认分类各自初始化一个同名气泡，方便一眼看出这是什么分类
+        categories.forEach((cat, i) => {
+          if (cat.id === 'recent') return;
+          setTimeout(() => {
+            activeCategory = cat.id;
+            addBubble(cat.name, {});
+            activeCategory = savedActiveCategory;
+          }, (DEFAULT_BUBBLES.length + i) * 150);
+        });
+      }
+      updateCounter();
+    }
+
+    // ---------- 导出为独立 HTML ----------
+    btnExport.addEventListener('click', () => {
+      saveToStorage();
+      saveSettings();
+      saveCategories();
+      const data = bubbles.map(bubbleToData);
+      // 克隆当前 DOM 并清除瞬时 UI 状态（toast/垃圾桶高亮/编辑浮层/悬浮提示/工具栏与输入框/大小面板/分类栏/网格线展开态），避免导出文件打开时残留
+      const clone = document.documentElement.cloneNode(true);
+      ['toast', 'trash-zone', 'edit-panel', 'hover-tooltip', 'topbar', 'input-container', 'size-panel', 'category-panel'].forEach(id => {
+        const el = clone.querySelector('#' + id);
+        if (el) el.removeAttribute('class');
+      });
+      const cloneGridOverlay = clone.querySelector('#grid-overlay');
+      if (cloneGridOverlay && !getGrid(activeCategory).enabled) cloneGridOverlay.removeAttribute('class');
+      const cloneInput = clone.querySelector('#wordInput');
+      if (cloneInput) cloneInput.setAttribute('value', '');
+
+      const fullHtml = '<!DOCTYPE html>\n' + clone.outerHTML;
+      const injected = fullHtml.replace(
+        '</head>',
+        `<script>window.__INITIAL_BUBBLES__ = ${JSON.stringify(data)}; window.__INITIAL_SETTINGS__ = ${JSON.stringify({ speedFactor, textRatio, sizeRatio })}; window.__INITIAL_CATEGORIES__ = ${JSON.stringify({ categories, activeCategory, gridState })};<\/script>\n</head>`
+      );
+      const blob = new Blob([injected], { type: 'text/html;charset=utf-8' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      const ts = new Date().toISOString().slice(0, 19).replace(/[:T]/g, '-');
+      a.href = url;
+      a.download = `灵感泡泡-${ts}.html`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      setTimeout(() => URL.revokeObjectURL(url), 2000);
+    });
+
+    // ---------- 鼠标/触控 ----------
+    function getMousePos(e) {
+      const rect = canvas.getBoundingClientRect();
+      const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+      const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+      return { x: clientX - rect.left, y: clientY - rect.top };
+    }
+
+    function hitTest(x, y) {
+      const list = visibleBubbles();
+      for (let i = list.length - 1; i >= 0; i--) {
+        const b = list[i];
+        if (Math.hypot(b.x - x, b.y - y) < b.radius) return b;
+      }
+      return null;
+    }
+
+    function isOverTrash(x, y) {
+      const rect = trashZone.getBoundingClientRect();
+      const canvasRect = canvas.getBoundingClientRect();
+      const px = canvasRect.left + x;
+      const py = canvasRect.top + y;
+      return px >= rect.left && px <= rect.right && py >= rect.top && py <= rect.bottom;
+    }
+
+    // 拖拽气泡时，检测鼠标（客户端坐标）是否悬停在某个分类 tab 上，命中则返回其 id
+    function hitCategoryTab(clientX, clientY) {
+      if (!categoryPanel.classList.contains('revealed')) return null;
+      const tabs = categoryList.querySelectorAll('.category-tab');
+      for (const tab of tabs) {
+        const rect = tab.getBoundingClientRect();
+        if (clientX >= rect.left && clientX <= rect.right && clientY >= rect.top && clientY <= rect.bottom) {
+          return tab.dataset.catId;
+        }
+      }
+      return null;
+    }
+
+    let dragMoved = false;
+    let dragStartX = 0, dragStartY = 0;
+    let dragClientX = 0, dragClientY = 0;
+
+    function handleStart(e) {
+      if (editingBubble) return;
+      const pos = getMousePos(e);
+      mouseX = pos.x; mouseY = pos.y;
+      const hit = hitTest(mouseX, mouseY);
+      // Command（Mac）/ Ctrl（Windows 键盘习惯）+ 单击气泡：直接在新标签页打开链接，不进入拖拽流程
+      if (hit && (e.metaKey || e.ctrlKey)) {
+        window.open(hit.url || DEFAULT_URL, '_blank', 'noopener,noreferrer');
+        return;
+      }
+      if (hit && !hit.locked) {
+        draggedBubble = hit;
+        dragMoved = false;
+        dragStartX = mouseX; dragStartY = mouseY;
+        dragClientX = e.touches ? e.touches[0].clientX : e.clientX;
+        dragClientY = e.touches ? e.touches[0].clientY : e.clientY;
+        trashZone.classList.add('visible');
+        canvas.style.cursor = 'grabbing';
+        hideTooltip();
+        revealCategoryPanel();
+      }
+    }
+
+    function handleMove(e) {
+      if (!draggedBubble) return;
+      const pos = getMousePos(e);
+      mouseX = pos.x; mouseY = pos.y;
+      dragClientX = e.touches ? e.touches[0].clientX : e.clientX;
+      dragClientY = e.touches ? e.touches[0].clientY : e.clientY;
+      if (Math.hypot(mouseX - dragStartX, mouseY - dragStartY) > 4) dragMoved = true;
+      if (isOverTrash(mouseX, mouseY)) trashZone.classList.add('armed');
+      else trashZone.classList.remove('armed');
+
+      const hoveredCatId = hitCategoryTab(dragClientX, dragClientY);
+      categoryList.querySelectorAll('.category-tab').forEach(tab => {
+        tab.classList.toggle('drop-armed', tab.dataset.catId === hoveredCatId);
+      });
+    }
+
+    function handleEnd() {
+      if (draggedBubble) {
+        const dropCatId = hitCategoryTab(dragClientX, dragClientY);
+        if (isOverTrash(mouseX, mouseY)) {
+          removeBubble(draggedBubble);
+        } else if (dropCatId && dropCatId !== draggedBubble.category) {
+          draggedBubble.category = dropCatId;
+          draggedBubble.quadrant = null;
           updateCounter();
-      }
-
-      // ---------- 导出为独立 HTML ----------
-      btnExport.addEventListener('click', () => {
-          saveToStorage();
-          saveSettings();
-          const data = bubbles.map(b => ({
-              id: b.id, text: b.text, detail: b.detail, color: b.color, alpha: b.alpha, locked: b.locked, url: b.url,
-              createdAt: b.createdAt, x: b.x, y: b.y, vx: b.vx, vy: b.vy
-          }));
-          // 克隆当前 DOM 并清除瞬时 UI 状态（toast/垃圾桶高亮/编辑浮层/悬浮提示/工具栏与输入框/大小面板展开态），避免导出文件打开时残留
-          const clone = document.documentElement.cloneNode(true);
-          ['toast', 'trash-zone', 'edit-panel', 'hover-tooltip', 'topbar', 'input-container', 'size-panel'].forEach(id => {
-              const el = clone.querySelector('#' + id);
-              if (el) el.removeAttribute('class');
-          });
-          const cloneInput = clone.querySelector('#wordInput');
-          if (cloneInput) cloneInput.setAttribute('value', '');
-
-          const fullHtml = '<!DOCTYPE html>\n' + clone.outerHTML;
-          const injected = fullHtml.replace(
-              '</head>',
-              `<script>window.__INITIAL_BUBBLES__ = ${JSON.stringify(data)}; window.__INITIAL_SETTINGS__ = ${JSON.stringify({ speedFactor, textRatio, sizeRatio })};<\/script>\n</head>`
-          );
-          const blob = new Blob([injected], { type: 'text/html;charset=utf-8' });
-          const url = URL.createObjectURL(blob);
-          const a = document.createElement('a');
-          const ts = new Date().toISOString().slice(0, 19).replace(/[:T]/g, '-');
-          a.href = url;
-          a.download = `灵感泡泡-${ts}.html`;
-          document.body.appendChild(a);
-          a.click();
-          document.body.removeChild(a);
-          setTimeout(() => URL.revokeObjectURL(url), 2000);
-      });
-
-      // ---------- 鼠标/触控 ----------
-      function getMousePos(e) {
-          const rect = canvas.getBoundingClientRect();
-          const clientX = e.touches ? e.touches[0].clientX : e.clientX;
-          const clientY = e.touches ? e.touches[0].clientY : e.clientY;
-          return { x: clientX - rect.left, y: clientY - rect.top };
-      }
-
-      function hitTest(x, y) {
-          for (let i = bubbles.length - 1; i >= 0; i--) {
-              const b = bubbles[i];
-              if (Math.hypot(b.x - x, b.y - y) < b.radius) return b;
-          }
-          return null;
-      }
-
-      function isOverTrash(x, y) {
-          const rect = trashZone.getBoundingClientRect();
-          const canvasRect = canvas.getBoundingClientRect();
-          const px = canvasRect.left + x;
-          const py = canvasRect.top + y;
-          return px >= rect.left && px <= rect.right && py >= rect.top && py <= rect.bottom;
-      }
-
-      let dragMoved = false;
-      let dragStartX = 0, dragStartY = 0;
-
-      function handleStart(e) {
-          if (editingBubble) return;
-          const pos = getMousePos(e);
-          mouseX = pos.x; mouseY = pos.y;
-          const hit = hitTest(mouseX, mouseY);
-          if (hit && !hit.locked) {
-              draggedBubble = hit;
-              dragMoved = false;
-              dragStartX = mouseX; dragStartY = mouseY;
-              trashZone.classList.add('visible');
-              canvas.style.cursor = 'grabbing';
-              hideTooltip();
-          }
-      }
-
-      function handleMove(e) {
-          if (!draggedBubble) return;
-          const pos = getMousePos(e);
-          mouseX = pos.x; mouseY = pos.y;
-          if (Math.hypot(mouseX - dragStartX, mouseY - dragStartY) > 4) dragMoved = true;
-          if (isOverTrash(mouseX, mouseY)) trashZone.classList.add('armed');
-          else trashZone.classList.remove('armed');
-      }
-
-      function handleEnd() {
-          if (draggedBubble) {
-              if (isOverTrash(mouseX, mouseY)) {
-                  removeBubble(draggedBubble);
-              } else {
-                  scheduleSave();
-              }
-          }
-          draggedBubble = null;
-          trashZone.classList.remove('visible', 'armed');
-          canvas.style.cursor = 'grab';
-      }
-
-      canvas.addEventListener('mousedown', handleStart);
-      window.addEventListener('mousemove', handleMove);
-      window.addEventListener('mouseup', handleEnd);
-      canvas.addEventListener('touchstart', handleStart, { passive: true });
-      window.addEventListener('touchmove', handleMove, { passive: true });
-      window.addEventListener('touchend', handleEnd);
-
-      // ---------- 双击编辑 ----------
-      function openEditPanel(bubble) {
-          editingBubble = bubble;
-          editText.value = bubble.text;
-          editDetail.value = bubble.detail || '';
-          editUrl.value = bubble.url || DEFAULT_URL;
-          buildColorPicker(
-              editColors,
-              (color) => { bubble.color = color; },
-              () => bubble.color,
-              { alpha: { get: () => bubble.alpha, set: (v) => { bubble.alpha = v; } } }
-          );
-          editLockBtn.classList.toggle('locked', bubble.locked);
-          editLockBtn.textContent = bubble.locked ? '📌 已锁定' : '📌 锁定';
-          hideTooltip();
-
-          const canvasRect = canvas.getBoundingClientRect();
-          const panelWidth = 260;
-          const panelHeight = 300;
-          let left = canvasRect.left + bubble.x - panelWidth / 2;
-          left = Math.max(10, Math.min(window.innerWidth - panelWidth - 10, left));
-          let top = canvasRect.top + bubble.y + bubble.radius + 12;
-          if (top + panelHeight > window.innerHeight) top = canvasRect.top + bubble.y - bubble.radius - panelHeight - 10;
-          top = Math.max(10, top);
-
-          editPanel.style.left = `${left}px`;
-          editPanel.style.top = `${top}px`;
-          editPanel.classList.add('visible');
-          editText.focus();
-          editText.select();
-      }
-
-      // 补全用户输入的链接，允许不带协议头（如 "example.com"），避免被浏览器当作相对路径解析
-      function normalizeUrl(raw) {
-          const trimmed = (raw || '').trim();
-          if (!trimmed) return DEFAULT_URL;
-          if (/^https?:\/\//i.test(trimmed)) return trimmed;
-          return `https://${trimmed}`;
-      }
-
-      function closeEditPanel(save) {
-          if (editingBubble && save) {
-              const newText = editText.value.trim();
-              if (newText) editingBubble.setText(newText, editDetail.value.trim());
-              editingBubble.url = normalizeUrl(editUrl.value);
-          }
-          editingBubble = null;
-          editPanel.classList.remove('visible');
           scheduleSave();
-      }
-
-      editOpenLink.addEventListener('click', () => {
-          const target = editingBubble ? normalizeUrl(editUrl.value) : DEFAULT_URL;
-          window.open(target, '_blank', 'noopener,noreferrer');
-      });
-
-      canvas.addEventListener('dblclick', (e) => {
-          const pos = getMousePos(e);
-          const hit = hitTest(pos.x, pos.y);
-          if (hit) openEditPanel(hit);
-      });
-
-      editLockBtn.addEventListener('click', () => {
-          if (!editingBubble) return;
-          editingBubble.locked = !editingBubble.locked;
-          editLockBtn.classList.toggle('locked', editingBubble.locked);
-          editLockBtn.textContent = editingBubble.locked ? '📌 已锁定' : '📌 锁定';
-      });
-
-      editDoneBtn.addEventListener('click', () => closeEditPanel(true));
-
-      editText.addEventListener('keydown', (e) => {
-          if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); closeEditPanel(true); }
-          else if (e.key === 'Escape') { e.preventDefault(); closeEditPanel(false); }
-      });
-
-      editDetail.addEventListener('keydown', (e) => {
-          if (e.key === 'Escape') { e.preventDefault(); closeEditPanel(false); }
-      });
-
-      document.addEventListener('mousedown', (e) => {
-          if (editingBubble && !editPanel.contains(e.target)) closeEditPanel(true);
-      });
-
-      // ---------- 悬浮显示详情 ----------
-      let hoveredBubble = null;
-
-      function hideTooltip() {
-          hoveredBubble = null;
-          hoverTooltip.classList.remove('visible');
-      }
-
-      function showTooltipFor(bubble, clientX, clientY) {
-          ttTitle.textContent = bubble.text;
-          const hasDetail = bubble.detail && bubble.detail.trim();
-          ttDivider.style.display = hasDetail ? 'block' : 'none';
-          ttDetail.style.display = hasDetail ? 'block' : 'none';
-          ttDetail.textContent = hasDetail ? bubble.detail : '';
-          const date = new Date(bubble.createdAt);
-          ttMeta.textContent = `创建于 ${date.toLocaleDateString()}${bubble.locked ? ' · 📌 已锁定' : ''}`;
-
-          hoverTooltip.classList.add('visible');
-          const ttWidth = hoverTooltip.offsetWidth || 260;
-          let left = clientX + 16;
-          let top = clientY + 16;
-          if (left + ttWidth > window.innerWidth - 10) left = clientX - ttWidth - 16;
-          if (top + hoverTooltip.offsetHeight > window.innerHeight - 10) top = window.innerHeight - hoverTooltip.offsetHeight - 10;
-          hoverTooltip.style.left = `${left}px`;
-          hoverTooltip.style.top = `${top}px`;
-      }
-
-      canvas.addEventListener('mousemove', (e) => {
-          if (draggedBubble || editingBubble) { hideTooltip(); return; }
-          const pos = getMousePos(e);
-          const hit = hitTest(pos.x, pos.y);
-          if (hit) {
-              hoveredBubble = hit;
-              showTooltipFor(hit, e.clientX, e.clientY);
-          } else {
-              hideTooltip();
+        } else {
+          const grid = gridState[draggedBubble.category];
+          if (grid && grid.enabled) {
+            draggedBubble.quadrant = computeQuadrant(draggedBubble.x, draggedBubble.y, grid);
           }
-      });
-
-      canvas.addEventListener('mouseleave', hideTooltip);
-
-      // ---------- 输入框：新建气泡（支持多行粘贴批量创建 / 回车确认 / 点击➕确认，方便手机端） ----------
-      // 新气泡从屏幕正中间出现（加一点小抖动，避免连续创建时完全重叠）
-      function spawnAtCenter(text) {
-          addBubble(text, {
-              x: width / 2 + (Math.random() - 0.5) * 30,
-              y: height / 2 + (Math.random() - 0.5) * 30
-          });
+          scheduleSave();
+        }
       }
+      draggedBubble = null;
+      trashZone.classList.remove('visible', 'armed');
+      categoryList.querySelectorAll('.category-tab').forEach(tab => tab.classList.remove('drop-armed'));
+      canvas.style.cursor = 'grab';
+      scheduleHideCategoryPanel();
+    }
 
-      function submitWordInput() {
-          const raw = wordInput.value;
-          const lines = raw.split('\n').map(s => s.trim()).filter(Boolean);
-          if (lines.length) {
-              lines.forEach((text, i) => {
-                  setTimeout(() => spawnAtCenter(text), i * 120);
-              });
-              wordInput.value = '';
+    canvas.addEventListener('mousedown', handleStart);
+    window.addEventListener('mousemove', handleMove);
+    window.addEventListener('mouseup', handleEnd);
+    canvas.addEventListener('touchstart', handleStart, { passive: true });
+    window.addEventListener('touchmove', handleMove, { passive: true });
+    window.addEventListener('touchend', handleEnd);
+
+    // 双击编辑面板内的分类选择区：点击即切换该气泡的所属分类
+    function renderEditCategoryRow(bubble) {
+      editCategoryRow.innerHTML = '';
+      categories.forEach(cat => {
+        const btn = document.createElement('div');
+        btn.className = 'cat-choice' + (bubble.category === cat.id ? ' active' : '');
+        btn.textContent = cat.name;
+        btn.addEventListener('click', () => {
+          bubble.category = cat.id;
+          bubble.quadrant = null;
+          renderEditCategoryRow(bubble);
+          if (bubble.category !== activeCategory) {
+            updateCounter();
+            scheduleSave();
           }
-      }
-
-      wordInput.addEventListener('keydown', (e) => {
-          if (e.key === 'Enter') submitWordInput();
+        });
+        editCategoryRow.appendChild(btn);
       });
+    }
 
-      wordInput.addEventListener('paste', (e) => {
-          const pasted = e.clipboardData.getData('text');
-          if (pasted.indexOf('\n') !== -1) {
-              e.preventDefault();
-              const lines = pasted.split('\n').map(s => s.trim()).filter(Boolean);
-              lines.forEach((text, i) => {
-                  setTimeout(() => spawnAtCenter(text), i * 120);
-              });
-          }
+    // ---------- 双击编辑 ----------
+    function openEditPanel(bubble) {
+      editingBubble = bubble;
+      editText.value = bubble.text;
+      editDetail.value = bubble.detail || '';
+      editUrl.value = bubble.url || DEFAULT_URL;
+      buildColorPicker(
+        editColors,
+        (color) => { bubble.color = color; },
+        () => bubble.color,
+        { alpha: { get: () => bubble.alpha, set: (v) => { bubble.alpha = v; } } }
+      );
+      editLockBtn.classList.toggle('locked', bubble.locked);
+      editLockBtn.textContent = bubble.locked ? '📌 已锁定' : '📌 锁定';
+      renderEditCategoryRow(bubble);
+      hideTooltip();
+
+      const canvasRect = canvas.getBoundingClientRect();
+      const panelWidth = 260;
+      const panelHeight = 300;
+      let left = canvasRect.left + bubble.x - panelWidth / 2;
+      left = Math.max(10, Math.min(window.innerWidth - panelWidth - 10, left));
+      let top = canvasRect.top + bubble.y + bubble.radius + 12;
+      if (top + panelHeight > window.innerHeight) top = canvasRect.top + bubble.y - bubble.radius - panelHeight - 10;
+      top = Math.max(10, top);
+
+      editPanel.style.left = `${left}px`;
+      editPanel.style.top = `${top}px`;
+      editPanel.classList.add('visible');
+      editText.focus();
+      editText.select();
+    }
+
+    // 补全用户输入的链接，允许不带协议头（如 "example.com"），避免被浏览器当作相对路径解析
+    function normalizeUrl(raw) {
+      const trimmed = (raw || '').trim();
+      if (!trimmed) return DEFAULT_URL;
+      if (/^https?:\/\//i.test(trimmed)) return trimmed;
+      return `https://${trimmed}`;
+    }
+
+    function closeEditPanel(save) {
+      if (editingBubble && save) {
+        const newText = editText.value.trim();
+        if (newText) editingBubble.setText(newText, editDetail.value.trim());
+        editingBubble.url = normalizeUrl(editUrl.value);
+      }
+      editingBubble = null;
+      editPanel.classList.remove('visible');
+      scheduleSave();
+    }
+
+    editOpenLink.addEventListener('click', () => {
+      const target = editingBubble ? normalizeUrl(editUrl.value) : DEFAULT_URL;
+      window.open(target, '_blank', 'noopener,noreferrer');
+    });
+
+    canvas.addEventListener('dblclick', (e) => {
+      const pos = getMousePos(e);
+      const hit = hitTest(pos.x, pos.y);
+      if (hit) openEditPanel(hit);
+    });
+
+    editLockBtn.addEventListener('click', () => {
+      if (!editingBubble) return;
+      editingBubble.locked = !editingBubble.locked;
+      editLockBtn.classList.toggle('locked', editingBubble.locked);
+      editLockBtn.textContent = editingBubble.locked ? '📌 已锁定' : '📌 锁定';
+    });
+
+    editDoneBtn.addEventListener('click', () => closeEditPanel(true));
+
+    editText.addEventListener('keydown', (e) => {
+      // Option（Mac）/ Alt（Windows）+ Enter：手动插入换行，气泡默认不自动换行，只在这里插入的位置才会真正分行显示
+      if (e.key === 'Enter' && e.altKey) {
+        e.preventDefault();
+        const start = editText.selectionStart, end = editText.selectionEnd;
+        editText.value = editText.value.slice(0, start) + '\n' + editText.value.slice(end);
+        editText.selectionStart = editText.selectionEnd = start + 1;
+      } else if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); closeEditPanel(true); }
+      else if (e.key === 'Escape') { e.preventDefault(); closeEditPanel(false); }
+    });
+
+    editDetail.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') { e.preventDefault(); closeEditPanel(false); }
+    });
+
+    document.addEventListener('mousedown', (e) => {
+      if (editingBubble && !editPanel.contains(e.target)) closeEditPanel(true);
+    });
+
+    // ---------- 悬浮显示详情 ----------
+    let hoveredBubble = null;
+
+    function hideTooltip() {
+      hoveredBubble = null;
+      hoverTooltip.classList.remove('visible');
+    }
+
+    function showTooltipFor(bubble, clientX, clientY) {
+      ttTitle.textContent = bubble.text;
+      const hasDetail = bubble.detail && bubble.detail.trim();
+      ttDivider.style.display = hasDetail ? 'block' : 'none';
+      ttDetail.style.display = hasDetail ? 'block' : 'none';
+      ttDetail.textContent = hasDetail ? bubble.detail : '';
+      const date = new Date(bubble.createdAt);
+      ttMeta.textContent = `创建于 ${date.toLocaleDateString()}${bubble.locked ? ' · 📌 已锁定' : ''}`;
+
+      hoverTooltip.classList.add('visible');
+      const ttWidth = hoverTooltip.offsetWidth || 260;
+      let left = clientX + 16;
+      let top = clientY + 16;
+      if (left + ttWidth > window.innerWidth - 10) left = clientX - ttWidth - 16;
+      if (top + hoverTooltip.offsetHeight > window.innerHeight - 10) top = window.innerHeight - hoverTooltip.offsetHeight - 10;
+      hoverTooltip.style.left = `${left}px`;
+      hoverTooltip.style.top = `${top}px`;
+    }
+
+    canvas.addEventListener('mousemove', (e) => {
+      if (draggedBubble || editingBubble) { hideTooltip(); return; }
+      const pos = getMousePos(e);
+      const hit = hitTest(pos.x, pos.y);
+      if (hit) {
+        hoveredBubble = hit;
+        showTooltipFor(hit, e.clientX, e.clientY);
+      } else {
+        hideTooltip();
+      }
+    });
+
+    canvas.addEventListener('mouseleave', hideTooltip);
+
+    // ---------- 输入框：新建气泡（支持多行粘贴批量创建 / 回车确认 / 点击➕确认，方便手机端） ----------
+    // 新气泡从屏幕正中间出现（加一点小抖动，避免连续创建时完全重叠）
+    function spawnAtCenter(text) {
+      addBubble(text, {
+        x: width / 2 + (Math.random() - 0.5) * 30,
+        y: height / 2 + (Math.random() - 0.5) * 30
       });
+    }
 
-      btnConfirmAdd.addEventListener('click', () => {
-          submitWordInput();
-          wordInput.focus();
-      });
-
-      window.addEventListener('beforeunload', saveToStorage);
-
-      // ---------- 速度 / 文字占比 滑动条 ----------
-      speedSlider.addEventListener('input', () => {
-          speedFactor = Number(speedSlider.value) / 100;
-          speedVal.textContent = `${speedSlider.value}%`;
-          saveSettings();
-      });
-
-      textRatioSlider.addEventListener('input', () => {
-          textRatio = Number(textRatioSlider.value) / 100;
-          textRatioVal.textContent = `${textRatioSlider.value}%`;
-          bubbles.forEach(b => b.computeLayout());
-          saveSettings();
-      });
-
-      sizeSlider.addEventListener('input', () => {
-          sizeRatio = Number(sizeSlider.value) / 100;
-          sizeVal.textContent = `${sizeSlider.value}%`;
-          bubbles.forEach(b => b.computeLayout());
-          saveSettings();
-      });
-
-      // ---------- 右侧气泡大小滑杆：首次打开常驻显示，鼠标移动过一次后才开启"靠近才显示"逻辑 ----------
-      let sizeRevealTimer = null;
-      function revealSizePanel() {
-          clearTimeout(sizeRevealTimer);
-          sizePanel.classList.add('revealed');
+    function submitWordInput() {
+      const raw = wordInput.value;
+      const lines = raw.split('\n').map(s => s.trim()).filter(Boolean);
+      if (lines.length) {
+        lines.forEach((text, i) => {
+          setTimeout(() => spawnAtCenter(text), i * 120);
+        });
+        wordInput.value = '';
       }
-      function scheduleHideSizePanel() {
-          clearTimeout(sizeRevealTimer);
-          sizeRevealTimer = setTimeout(() => sizePanel.classList.remove('revealed'), 500);
-      }
-      sizeHoverZone.addEventListener('mouseenter', revealSizePanel);
-      sizePanel.addEventListener('mouseenter', revealSizePanel);
-      sizeHoverZone.addEventListener('mouseleave', scheduleHideSizePanel);
-      sizePanel.addEventListener('mouseleave', scheduleHideSizePanel);
+    }
 
-      // ---------- 顶部工具栏：首次打开常驻显示，鼠标移动过一次后才开启"靠近顶部才显示"逻辑 ----------
-      let revealTimer = null;
-      function revealTopbar() {
-          clearTimeout(revealTimer);
-          topbar.classList.add('revealed');
-      }
-      function scheduleHideTopbar() {
-          clearTimeout(revealTimer);
-          revealTimer = setTimeout(() => topbar.classList.remove('revealed'), 500);
-      }
-      hoverZone.addEventListener('mouseenter', revealTopbar);
-      topbar.addEventListener('mouseenter', revealTopbar);
-      hoverZone.addEventListener('mouseleave', scheduleHideTopbar);
-      topbar.addEventListener('mouseleave', scheduleHideTopbar);
+    wordInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') submitWordInput();
+    });
 
-      // ---------- 底部输入框：首次打开常驻显示，鼠标移动过一次后才开启"靠近底部才显示"逻辑，输入中不会意外隐藏 ----------
-      let inputRevealTimer = null;
-      function revealInput() {
-          clearTimeout(inputRevealTimer);
-          inputContainer.classList.add('revealed');
+    wordInput.addEventListener('paste', (e) => {
+      const pasted = e.clipboardData.getData('text');
+      if (pasted.indexOf('\n') !== -1) {
+        e.preventDefault();
+        const lines = pasted.split('\n').map(s => s.trim()).filter(Boolean);
+        lines.forEach((text, i) => {
+          setTimeout(() => spawnAtCenter(text), i * 120);
+        });
       }
-      function scheduleHideInput() {
-          clearTimeout(inputRevealTimer);
-          if (document.activeElement === wordInput) return;
-          inputRevealTimer = setTimeout(() => {
-              if (document.activeElement === wordInput) return;
-              inputContainer.classList.remove('revealed');
-          }, 500);
-      }
-      inputHoverZone.addEventListener('mouseenter', revealInput);
-      inputContainer.addEventListener('mouseenter', revealInput);
-      inputHoverZone.addEventListener('mouseleave', scheduleHideInput);
-      inputContainer.addEventListener('mouseleave', scheduleHideInput);
-      wordInput.addEventListener('focus', revealInput);
-      wordInput.addEventListener('blur', scheduleHideInput);
+    });
 
-      // 首次打开时三个面板都常驻显示；用户第一次移动鼠标后才收起，并交给各自的 hover 逻辑接管
+    btnConfirmAdd.addEventListener('click', () => {
+      submitWordInput();
+      wordInput.focus();
+    });
+
+    window.addEventListener('beforeunload', saveToStorage);
+
+    // ---------- 速度 / 文字占比 滑动条 ----------
+    speedSlider.addEventListener('input', () => {
+      speedFactor = Number(speedSlider.value) / 100;
+      speedVal.textContent = `${speedSlider.value}%`;
+      saveSettings();
+    });
+
+    textRatioSlider.addEventListener('input', () => {
+      textRatio = Number(textRatioSlider.value) / 100;
+      textRatioVal.textContent = `${textRatioSlider.value}%`;
+      bubbles.forEach(b => b.computeLayout());
+      saveSettings();
+    });
+
+    sizeSlider.addEventListener('input', () => {
+      sizeRatio = Number(sizeSlider.value) / 100;
+      sizeVal.textContent = `${sizeSlider.value}%`;
+      bubbles.forEach(b => b.computeLayout());
+      saveSettings();
+    });
+
+    // ---------- 四个悬浮面板（顶部工具栏/底部输入框/右侧大小/左侧分类）统一同步显示与隐藏 ----------
+    // 靠近任意一个面板的感应区都会让全部四个面板一起淡入；只有当鼠标离开所有面板/感应区（且未在拖拽气泡、未聚焦输入框）才会一起淡出
+    let panelsRevealTimer = null;
+    function revealAllPanels() {
+      clearTimeout(panelsRevealTimer);
       topbar.classList.add('revealed');
       inputContainer.classList.add('revealed');
       sizePanel.classList.add('revealed');
-      let firstMouseMoveHandled = false;
-      function handleFirstMouseMove(e) {
-          if (firstMouseMoveHandled) return;
-          firstMouseMoveHandled = true;
-          window.removeEventListener('mousemove', handleFirstMouseMove);
-          window.removeEventListener('touchstart', handleFirstMouseMove);
-          if (!hoverZone.matches(':hover') && !topbar.matches(':hover')) scheduleHideTopbar();
-          if (!inputHoverZone.matches(':hover') && !inputContainer.matches(':hover') && document.activeElement !== wordInput) scheduleHideInput();
-          if (!sizeHoverZone.matches(':hover') && !sizePanel.matches(':hover')) scheduleHideSizePanel();
-      }
-      window.addEventListener('mousemove', handleFirstMouseMove);
-      window.addEventListener('touchstart', handleFirstMouseMove, { passive: true });
+      categoryPanel.classList.add('revealed');
+    }
+    function scheduleHideAllPanels() {
+      clearTimeout(panelsRevealTimer);
+      panelsRevealTimer = setTimeout(() => {
+        if (draggedBubble || document.activeElement === wordInput) return;
+        topbar.classList.remove('revealed');
+        inputContainer.classList.remove('revealed');
+        sizePanel.classList.remove('revealed');
+        categoryPanel.classList.remove('revealed');
+      }, 500);
+    }
+    // 拖拽气泡结束、松开输入框焦点后，若鼠标已不在任何面板范围内，仍要正常触发一次隐藏检查
+    function scheduleHideAllPanelsIfIdle() {
+      if (draggedBubble || document.activeElement === wordInput) return;
+      scheduleHideAllPanels();
+    }
+    const revealZones = [hoverZone, topbar, inputHoverZone, inputContainer, sizeHoverZone, sizePanel, categoryHoverZone, categoryPanel];
+    revealZones.forEach(zone => {
+      zone.addEventListener('mouseenter', revealAllPanels);
+      zone.addEventListener('mouseleave', scheduleHideAllPanelsIfIdle);
+    });
+    wordInput.addEventListener('focus', revealAllPanels);
+    wordInput.addEventListener('blur', scheduleHideAllPanelsIfIdle);
+    function revealCategoryPanel() { revealAllPanels(); }
+    function scheduleHideCategoryPanel() { scheduleHideAllPanelsIfIdle(); }
 
-      // ---------- 清除所有气泡 ----------
-      btnClearBubbles.addEventListener('click', () => {
-          if (!bubbles.length) return;
-          if (!confirm(`确定要清除全部 ${bubbles.length} 个灵感气泡吗？此操作不可撤销。`)) return;
-          bubbles = [];
-          recentlyDeleted = null;
-          updateCounter();
-          saveToStorage();
+    // ---------- 分类：渲染 / 切换 / 增删改 ----------
+    function renderCategoryPanel() {
+      categoryList.innerHTML = '';
+      categories.forEach(cat => {
+        const tab = document.createElement('div');
+        tab.className = 'category-tab' + (cat.id === activeCategory ? ' active' : '');
+        tab.dataset.catId = cat.id;
+        tab.style.setProperty('--cat-color', cat.color || CATEGORY_COLORS[0]);
+
+        const dot = document.createElement('span');
+        dot.className = 'cat-dot';
+        tab.appendChild(dot);
+
+        const nameEl = document.createElement('span');
+        nameEl.className = 'cat-name';
+        nameEl.textContent = cat.name;
+        tab.appendChild(nameEl);
+
+        const editIcon = document.createElement('span');
+        editIcon.className = 'cat-edit';
+        editIcon.textContent = '✏';
+        editIcon.title = '重命名分类';
+        editIcon.addEventListener('click', (e) => {
+          e.stopPropagation();
+          startRenameCategory(tab, cat, nameEl, editIcon);
+        });
+        tab.appendChild(editIcon);
+
+        if (cat.id !== 'recent') {
+          const delIcon = document.createElement('span');
+          delIcon.className = 'cat-delete';
+          delIcon.textContent = '×';
+          delIcon.title = '删除分类';
+          delIcon.addEventListener('click', (e) => {
+            e.stopPropagation();
+            deleteCategory(cat.id);
+          });
+          tab.appendChild(delIcon);
+        }
+
+        tab.addEventListener('click', () => {
+          if (draggedBubble) return;
+          switchCategory(cat.id);
+        });
+
+        categoryList.appendChild(tab);
       });
 
-      initBubbles();
-      animate();
+      categoryAddBtn.disabled = categories.length >= MAX_CATEGORIES;
+      resetDockScale();
+    }
+
+    // ---------- 分类栏 Dock 式扇形放大：鼠标越靠近某个 tab 的中心，该 tab 放大越多，邻近 tab 按距离递减联动放大 ----------
+    const DOCK_MAX_SCALE = 1.5;
+    const DOCK_FALLOFF = 60; // 影响半径（px），超出此距离的 tab 保持原大小
+
+    function updateDockScale(mouseClientY) {
+      const tabs = categoryList.querySelectorAll('.category-tab');
+      tabs.forEach(tab => {
+        const rect = tab.getBoundingClientRect();
+        const centerY = rect.top + rect.height / 2;
+        const dist = Math.abs(mouseClientY - centerY);
+        const t = Math.max(0, 1 - dist / DOCK_FALLOFF);
+        const scale = 1 + (DOCK_MAX_SCALE - 1) * t;
+        tab.style.setProperty('--dock-scale', scale.toFixed(3));
+      });
+    }
+
+    function resetDockScale() {
+      categoryList.querySelectorAll('.category-tab').forEach(tab => tab.style.setProperty('--dock-scale', '1'));
+    }
+
+    categoryPanel.addEventListener('mousemove', (e) => updateDockScale(e.clientY));
+    categoryPanel.addEventListener('mouseleave', resetDockScale);
+
+    function startRenameCategory(tab, cat, nameEl, editIcon) {
+      const input = document.createElement('input');
+      input.type = 'text';
+      input.className = 'cat-name-input';
+      input.value = cat.name;
+      input.maxLength = 8;
+      tab.replaceChild(input, nameEl);
+      editIcon.style.display = 'none';
+      input.focus();
+      input.select();
+
+      const commit = () => {
+        const val = input.value.trim();
+        if (val) { cat.name = val; }
+        renderCategoryPanel();
+        scheduleSave();
+      };
+      input.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') { e.preventDefault(); commit(); }
+        else if (e.key === 'Escape') { e.preventDefault(); renderCategoryPanel(); }
+      });
+      input.addEventListener('blur', commit);
+      input.addEventListener('click', (e) => e.stopPropagation());
+    }
+
+    function deleteCategory(catId) {
+      if (catId === 'recent') return;
+      const cat = categories.find(c => c.id === catId);
+      if (!cat) return;
+      const affected = bubbles.filter(b => b.category === catId).length;
+      const msg = affected
+        ? `确定要删除分类「${cat.name}」吗？其下 ${affected} 个灵感气泡将移动到「最近」分类。`
+        : `确定要删除分类「${cat.name}」吗？`;
+      if (!confirm(msg)) return;
+      bubbles.forEach(b => { if (b.category === catId) { b.category = 'recent'; b.quadrant = null; } });
+      categories = categories.filter(c => c.id !== catId);
+      delete gridState[catId];
+      if (activeCategory === catId) {
+        switchCategory('recent');
+      } else {
+        renderCategoryPanel();
+      }
+      scheduleSave();
+    }
+
+    function switchCategory(catId) {
+      if (catId === activeCategory) return;
+      activeCategory = catId;
+      hoveredBubble = null;
+      hideTooltip();
+      if (editingBubble) closeEditPanel(true);
+      draggedBubble = null;
+      renderCategoryPanel();
+      syncGridUiToActiveCategory();
+      updateCounter();
+      scheduleSave();
+    }
+
+    categoryAddBtn.addEventListener('click', () => {
+      if (categories.length >= MAX_CATEGORIES) return;
+      const input = document.createElement('input');
+      input.type = 'text';
+      input.className = 'category-add-input';
+      input.placeholder = '分类名称';
+      input.maxLength = 8;
+      categoryAddBtn.replaceWith(input);
+      input.focus();
+
+      const commit = () => {
+        const val = input.value.trim();
+        if (val && categories.length < MAX_CATEGORIES) {
+          const usedColors = categories.map(c => c.color);
+          const color = CATEGORY_COLORS.find(c => !usedColors.includes(c)) || CATEGORY_COLORS[categories.length % CATEGORY_COLORS.length];
+          const newCat = { id: 'cat_' + (categoryIdSeq++), name: val, color };
+          categories.push(newCat);
+          // 新建分类时自动创建一个同名气泡，方便一眼看出这是什么分类
+          const savedActiveCategory = activeCategory;
+          activeCategory = newCat.id;
+          addBubble(newCat.name, {});
+          activeCategory = savedActiveCategory;
+          scheduleSave();
+        }
+        input.replaceWith(categoryAddBtn);
+        renderCategoryPanel();
+      };
+      input.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') { e.preventDefault(); commit(); }
+        else if (e.key === 'Escape') { e.preventDefault(); input.replaceWith(categoryAddBtn); renderCategoryPanel(); }
+      });
+      input.addEventListener('blur', commit);
+    });
+
+    // ---------- 隔离网格：开关 / 分隔线拖拽 / 象限标签 ----------
+    function syncGridUiToActiveCategory() {
+      const grid = getGrid(activeCategory);
+      gridOverlay.classList.toggle('visible', grid.enabled);
+      btnGridToggle.classList.toggle('active', grid.enabled);
+      positionGridLines(grid);
+      renderQuadrantLabels(grid);
+    }
+
+    function positionGridLines(grid) {
+      gridLineV.style.left = `${grid.splitX * width}px`;
+      gridLineH.style.top = `${grid.splitY * height}px`;
+    }
+
+    // 4 个象限标签紧贴十字交点四周显示：0=左上 1=右上 2=左下 3=右下
+    function positionQuadrantLabels(grid) {
+      const cx = grid.splitX * width, cy = grid.splitY * height;
+      const gap = 10;
+      const pos = [
+        { right: width - cx + gap, bottom: height - cy + gap },
+        { left: cx + gap, bottom: height - cy + gap },
+        { right: width - cx + gap, top: cy + gap },
+        { left: cx + gap, top: cy + gap }
+      ];
+      quadrantLabels.forEach((el, i) => {
+        el.style.left = pos[i].left != null ? `${pos[i].left}px` : '';
+        el.style.right = pos[i].right != null ? `${pos[i].right}px` : '';
+        el.style.top = pos[i].top != null ? `${pos[i].top}px` : '';
+        el.style.bottom = pos[i].bottom != null ? `${pos[i].bottom}px` : '';
+      });
+    }
+
+    function renderQuadrantLabels(grid) {
+      quadrantLabels.forEach((el, i) => { el.textContent = grid.labels[i]; });
+      positionQuadrantLabels(grid);
+    }
+
+    // 双击象限标签改名：仅对当前分类的该象限生效
+    quadrantLabels.forEach((el, i) => {
+      el.addEventListener('dblclick', (e) => {
+        e.stopPropagation();
+        const grid = getGrid(activeCategory);
+        const input = document.createElement('input');
+        input.type = 'text';
+        input.className = 'quadrant-label-input';
+        input.value = grid.labels[i];
+        input.maxLength = 12;
+        input.style.left = el.style.left;
+        input.style.right = el.style.right;
+        input.style.top = el.style.top;
+        input.style.bottom = el.style.bottom;
+        el.style.display = 'none';
+        gridOverlay.appendChild(input);
+        input.focus();
+        input.select();
+
+        const commit = () => {
+          const val = input.value.trim();
+          if (val) grid.labels[i] = val;
+          input.remove();
+          el.style.display = '';
+          renderQuadrantLabels(grid);
+          scheduleSave();
+        };
+        input.addEventListener('keydown', (ev) => {
+          if (ev.key === 'Enter') { ev.preventDefault(); commit(); }
+          else if (ev.key === 'Escape') { ev.preventDefault(); input.remove(); el.style.display = ''; }
+        });
+        input.addEventListener('blur', commit);
+        input.addEventListener('mousedown', (ev) => ev.stopPropagation());
+      });
+    });
+
+    btnGridToggle.addEventListener('click', () => {
+      const grid = getGrid(activeCategory);
+      grid.enabled = !grid.enabled;
+      if (grid.enabled) {
+        visibleBubbles().forEach(b => { if (b.quadrant === null) b.quadrant = computeQuadrant(b.x, b.y, grid); });
+      }
+      syncGridUiToActiveCategory();
+      scheduleSave();
+    });
+
+    let draggingLine = null; // null | 'v' | 'h'
+
+    function startLineDrag(which) {
+      return (e) => {
+        e.preventDefault();
+        draggingLine = which;
+        (which === 'v' ? gridLineV : gridLineH).classList.add('dragging');
+      };
+    }
+
+    function handleLineDrag(e) {
+      if (!draggingLine) return;
+      const rect = canvas.getBoundingClientRect();
+      const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+      const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+      const grid = getGrid(activeCategory);
+      if (draggingLine === 'v') {
+        grid.splitX = Math.max(0.15, Math.min(0.85, (clientX - rect.left) / width));
+      } else {
+        grid.splitY = Math.max(0.15, Math.min(0.85, (clientY - rect.top) / height));
+      }
+      positionGridLines(grid);
+      positionQuadrantLabels(grid);
+    }
+
+    function endLineDrag() {
+      if (!draggingLine) return;
+      gridLineV.classList.remove('dragging');
+      gridLineH.classList.remove('dragging');
+      draggingLine = null;
+      scheduleSave();
+    }
+
+    gridLineV.addEventListener('mousedown', startLineDrag('v'));
+    gridLineH.addEventListener('mousedown', startLineDrag('h'));
+    gridLineV.addEventListener('touchstart', startLineDrag('v'), { passive: false });
+    gridLineH.addEventListener('touchstart', startLineDrag('h'), { passive: false });
+    window.addEventListener('mousemove', handleLineDrag);
+    window.addEventListener('touchmove', handleLineDrag, { passive: true });
+    window.addEventListener('mouseup', endLineDrag);
+    window.addEventListener('touchend', endLineDrag);
+
+    // 首次打开时四个面板都常驻显示；用户第一次移动鼠标后才收起，并交给统一的 hover 逻辑接管
+    revealAllPanels();
+    let firstMouseMoveHandled = false;
+    function handleFirstMouseMove(e) {
+      if (firstMouseMoveHandled) return;
+      firstMouseMoveHandled = true;
+      window.removeEventListener('mousemove', handleFirstMouseMove);
+      window.removeEventListener('touchstart', handleFirstMouseMove);
+      const stillHovering = revealZones.some(zone => zone.matches(':hover'));
+      if (!stillHovering) scheduleHideAllPanelsIfIdle();
+    }
+    window.addEventListener('mousemove', handleFirstMouseMove);
+    window.addEventListener('touchstart', handleFirstMouseMove, { passive: true });
+
+    // ---------- 清除所有气泡 ----------
+    btnClearBubbles.addEventListener('click', () => {
+      if (!bubbles.length) return;
+      if (!confirm(`确定要清除全部 ${bubbles.length} 个灵感气泡吗？此操作不可撤销。`)) return;
+      bubbles = [];
+      recentlyDeleted = null;
+      updateCounter();
+      saveToStorage();
+    });
+
+    initBubbles();
+    animate();
   })();
 </script>
 </body>
