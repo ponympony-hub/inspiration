@@ -1,0 +1,1132 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>JSON对比</title>
+    <style>
+        :root {
+            --bg-color: #f4f7f9;
+            --card-bg: #ffffff;
+            --primary-blue: #0066ff;
+            --up-color: #02ad8f;
+            --down-color: #f84960;
+            --border-color: #e1e4e8;
+        }
+
+        * { box-sizing: border-box; }
+
+        html, body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background-color: var(--bg-color);
+            margin: 0;
+            padding: 0;
+            min-height: 100vh;
+            width: 100%;
+        }
+
+        .container {
+            background: var(--card-bg);
+            padding: 16px 20px;
+            min-height: 100vh;
+            width: 100%;
+        }
+
+        h2 { text-align: center; color: #333; margin: 0 0 14px; font-size: 18px; }
+
+        .toolbar {
+            display: flex;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-bottom: 10px;
+            padding: 10px 14px;
+            background: #f8f9fa;
+            border-radius: 8px;
+        }
+
+        .toolbar label { font-weight: 600; white-space: nowrap; font-size: 13px; }
+
+        input[type="text"] {
+            padding: 6px 10px;
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+            outline: none;
+            font-weight: 600;
+            text-transform: uppercase;
+            width: 120px;
+            font-size: 13px;
+        }
+
+        .sort-group {
+            display: flex;
+            gap: 6px;
+            margin-left: auto;
+            flex-wrap: wrap;
+        }
+
+        .sort-btn {
+            padding: 5px 10px;
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 12px;
+            background: #fff;
+            color: #555;
+            white-space: nowrap;
+            user-select: none;
+            transition: background 0.15s, color 0.15s;
+        }
+
+        .sort-btn.active {
+            background: var(--primary-blue);
+            color: #fff;
+            border-color: var(--primary-blue);
+        }
+
+        /* 交易所/市场筛选器 */
+        .exchange-filter {
+            display: flex;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-bottom: 10px;
+            padding: 8px 14px;
+            background: #f0f4ff;
+            border-radius: 8px;
+            border: 1px solid #dce6ff;
+        }
+
+        .exchange-filter label { font-weight: 600; white-space: nowrap; font-size: 13px; color: #444; }
+
+        .exch-btn {
+            padding: 4px 11px;
+            border: 1px solid var(--border-color);
+            border-radius: 14px;
+            cursor: pointer;
+            font-size: 12px;
+            background: #fff;
+            color: #555;
+            white-space: nowrap;
+            user-select: none;
+            transition: background 0.15s, color 0.15s, border-color 0.15s;
+        }
+
+        .exch-btn:hover { border-color: #aac; }
+
+        .exch-btn.active-bitget  { background: #0052cc; color: #fff; border-color: #0052cc; }
+        .exch-btn.active-binance { background: #f0b90b; color: #333; border-color: #d4a008; }
+        .exch-btn.active-okx     { background: #0f6fff; color: #fff; border-color: #0055dd; }
+        .exch-btn.active-gate    { background: #24c;    color: #fff; border-color: #1a99cc; }
+        .exch-btn.active-us      { background: #c0392b; color: #fff; border-color: #a93226; }
+        .exch-btn.active-hk      { background: #c00;    color: #fff; border-color: #990000; }
+        .exch-btn.active-cn      { background: #d4380d; color: #fff; border-color: #b7310b; }
+        .exch-btn.active-chain   { background: #7c3aed; color: #fff; border-color: #6d28d9; }
+        .exch-btn.active-mexc    { background: #1e80ff; color: #fff; border-color: #1060cc; }
+
+        /* 标签页导航 */
+        .tab-nav {
+            display: flex;
+            gap: 2px;
+            margin-bottom: 10px;
+            border-bottom: 2px solid var(--border-color);
+        }
+
+        .tab-item {
+            padding: 7px 16px;
+            cursor: pointer;
+            font-size: 13px;
+            font-weight: 600;
+            color: #888;
+            border-radius: 6px 6px 0 0;
+            border: 1px solid transparent;
+            border-bottom: none;
+            user-select: none;
+            transition: color 0.15s, background 0.15s;
+        }
+
+        .tab-item:hover { color: #555; background: #f5f5f5; }
+
+        .tab-item.active {
+            color: var(--primary-blue);
+            background: #fff;
+            border-color: var(--border-color);
+            border-bottom-color: #fff;
+            margin-bottom: -2px;
+        }
+
+        /* 主表格 */
+        table { width: 100%; border-collapse: collapse; table-layout: fixed; }
+
+        th {
+            background: #fdfdfd;
+            color: #888;
+            font-weight: 500;
+            text-align: right;
+            padding: 9px 10px;
+            border-bottom: 2px solid var(--border-color);
+            white-space: nowrap;
+            position: relative;
+            overflow: hidden;
+            font-size: 12px;
+        }
+
+        th.sortable { cursor: pointer; user-select: none; }
+        th.sortable:hover { background: #f0f2f5; color: #555; }
+        th.col-active { color: var(--primary-blue); }
+
+        th .th-inner { display: flex; align-items: center; justify-content: flex-end; gap: 4px; }
+        th:first-child .th-inner { justify-content: flex-start; }
+
+        /* 列宽拖拽手柄 */
+        th .resize-handle {
+            position: absolute;
+            right: 0; top: 0; bottom: 0;
+            width: 5px;
+            cursor: col-resize;
+            user-select: none;
+            z-index: 1;
+        }
+        th .resize-handle:hover, th .resize-handle.dragging { background: var(--primary-blue); opacity: 0.4; }
+
+        th.col-drag-over { border-left: 2px solid var(--primary-blue); }
+        th[draggable="true"] { cursor: grab; }
+        th[draggable="true"]:active { cursor: grabbing; }
+
+        th .col-del {
+            display: none;
+            position: absolute;
+            top: 3px; right: 7px;
+            font-size: 10px;
+            color: #bbb;
+            cursor: pointer;
+            line-height: 1;
+            padding: 1px 2px;
+        }
+        th:hover .col-del { display: block; }
+        th .col-del:hover { color: var(--down-color); }
+
+        th:first-child { text-align: left; }
+
+        td {
+            padding: 11px 10px;
+            border-bottom: 1px solid var(--border-color);
+            text-align: right;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            font-size: 13px;
+        }
+
+        td:first-child { text-align: left; }
+
+        .symbol-cell {
+            font-weight: 600;
+            color: #333;
+            font-size: 13px;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            flex-wrap: wrap;
+        }
+
+        /* 标的名称可点击跳转 */
+        .sym-link {
+            color: var(--primary-blue);
+            text-decoration: none;
+            font-weight: 700;
+            cursor: pointer;
+        }
+        .sym-link:hover { text-decoration: underline; }
+
+        .price-val { font-size: 14px; font-weight: bold; color: var(--primary-blue); }
+        .up   { color: var(--up-color);   font-weight: 600; }
+        .down { color: var(--down-color); font-weight: 600; }
+        .neutral { color: #999; }
+
+        .high-val { color: var(--up-color); }
+        .low-val  { color: var(--down-color); }
+
+        tr.amp-highlight td { background: #fff8e1 !important; }
+        tr.amp-highlight:hover td { background: #fff3cd !important; }
+
+        .refresh-tag {
+            text-align: center;
+            font-size: 12px;
+            color: #999;
+            margin-top: 12px;
+        }
+
+        tr:hover td { background: #fafbfc; }
+
+        /* ── 链上子行（嵌入主表格中） ── */
+        tr.chain-row td {
+            background: #f8f0ff !important;
+            font-size: 12px;
+            padding: 8px 10px;
+            border-bottom: 1px dashed #d8b4fe;
+        }
+        tr.chain-row:hover td { background: #f3e8ff !important; }
+
+        .chain-inline {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        .chain-inline-label {
+            display: inline-block;
+            font-size: 10px;
+            padding: 1px 5px;
+            border-radius: 3px;
+            background: #ede9fe;
+            color: #7c3aed;
+            border: 1px solid #c4b5fd;
+            font-weight: 600;
+        }
+
+        .chain-inline-loading { color: #999; font-style: italic; font-size: 12px; }
+
+        #mainPanel { display: block; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h2>实时行情</h2>
+
+    <!-- ── 交易所行情面板 ── -->
+    <div id="mainPanel">
+        <!-- 交易所 / 市场筛选 -->
+        <div class="exchange-filter">
+            <label>交易所 / 市场:</label>
+            <button class="exch-btn" id="exch-bitget"  onclick="toggleExchange('bitget')">Bitget</button>
+            <button class="exch-btn" id="exch-binance" onclick="toggleExchange('binance')">币安</button>
+            <button class="exch-btn" id="exch-okx"     onclick="toggleExchange('okx')">OKX</button>
+            <button class="exch-btn" id="exch-gate"    onclick="toggleExchange('gate')">GATE</button>
+            <button class="exch-btn" id="exch-mexc"    onclick="toggleExchange('mexc')">抹茶</button>
+            <span style="width:1px;height:18px;background:#ccc;margin:0 4px"></span>
+            <button class="exch-btn" id="exch-us"      onclick="toggleExchange('us')">美股</button>
+            <button class="exch-btn" id="exch-hk"      onclick="toggleExchange('hk')">港股</button>
+            <button class="exch-btn" id="exch-cn"      onclick="toggleExchange('cn')">A股</button>
+        </div>
+
+        <div class="toolbar">
+            <label>添加标的:</label>
+            <input type="text" id="addInput" placeholder="输入如: BTC" onkeydown="if(event.key==='Enter')addSymbol()">
+            <!-- 指定交易所 -->
+            <select id="addExchange" aria-label="选择交易所" style="padding:6px 8px;border:1px solid var(--border-color);border-radius:4px;font-size:12px;background:#fff">
+                <option value="">自动（优先Bitget）</option>
+                <option value="bitget">Bitget</option>
+                <option value="binance">币安</option>
+                <option value="binance-chain">币安链上(Alpha)</option>
+                <option value="okx">OKX</option>
+                <option value="gate">Gate</option>
+                <option value="mexc">抹茶(MEXC)</option>
+            </select>
+            <button class="sort-btn" onclick="addSymbol()">添加</button>
+
+            <div class="sort-group" id="sortGroup"></div>
+        </div>
+
+        <table id="mainTable">
+            <thead><tr id="theadRow"></tr></thead>
+            <tbody id="tableBody"></tbody>
+        </table>
+
+        <div class="refresh-tag" id="statusLine">正在加载行情数据...</div>
+    </div>
+</div>
+
+<script>
+    // ── 列定义 ────────────────────────────────────────────────────
+    const ALL_COLS = [
+        { key: 'symbol',  label: '标的',              width: 180, sortField: null },
+        { key: 'price',   label: '实时价格',            width: 150, sortField: 'price' },
+        { key: 'change',  label: '24h 涨跌幅',          width: 110, sortField: 'change' },
+        { key: 'amp',     label: '24h 振幅',            width: 100, sortField: 'amp' },
+        { key: 'vol',     label: '24h 成交额 (万$)',     width: 150, sortField: 'vol' },
+        { key: 'mktcap',  label: '市值 ($)',            width: 130, sortField: 'mktcap' },
+        { key: 'high',    label: '24h 最高价',          width: 120, sortField: null },
+        { key: 'low',     label: '24h 最低价',          width: 120, sortField: null },
+    ];
+
+    let visibleCols = ALL_COLS.map(c => c.key);
+    function getCol(key) { return ALL_COLS.find(c => c.key === key); }
+
+    // ── 排序状态 ──────────────────────────────────────────────────
+    let sortKey = 'default';
+    let sortDir = 1;
+
+    // ── 交易所状态（默认全不选）──────────────────────────────────
+    const EXCHANGE_ACTIVE = { bitget: false, binance: false, okx: false, gate: false, mexc: false, us: false, hk: false, cn: false };
+
+    function toggleExchange(ex) {
+        EXCHANGE_ACTIVE[ex] = !EXCHANGE_ACTIVE[ex];
+        const btn = document.getElementById('exch-' + ex);
+        btn.classList.toggle('active-' + ex, EXCHANGE_ACTIVE[ex]);
+    }
+
+    // ── 标的列表：每个条目是 { id, sym, exchange }
+    //    id = sym + '@' + exchange（唯一键），exchange='' 表示自动
+    let rows = [
+    'BOME', 'BCH', 'PEPE', 'ETC', 'RATS', 'TRUMP', 'ENA', 'AAVE',
+    'RSKHY', 'SKHY', 'SKHYNIX', 'DOGE', 'GRAM', 'ONDO', 'MRVL',
+    'SHIB', 'PREOPAI', '币安人生', 'OKB', 'ARTX', 'DYDX', 'NVDA', 'SPCX',
+    'SOL', 'BTC', 'ETH', 'BGB', 'BNB', 'HYPE', 'UNI', 'SUI', 'TSLA', 'AAPL', 'MU', 'SNDK', 'GOOGL'
+    ].map(s => ({ id: s + '@auto', sym: s, exchange: '' }));
+
+    // 别名映射（显示名 → 实际 API symbol）
+    const SYMBOL_ALIAS = {};
+    function apiSym(sym) { return SYMBOL_ALIAS[sym] || sym; }
+
+    // cache 以 id 为键
+    const cache = {};
+
+    // ── 交易所 K线页面 URL 生成 ───────────────────────────────────
+    function getChartUrl(sym, exchange, alphaSymbol) {
+        const s = apiSym(sym).toUpperCase();
+        const ex = exchange || 'bitget';
+        switch (ex) {
+            case 'bitget':        return `https://www.bitget.com/spot/${s}USDT`;
+            case 'binance':       return `https://www.binance.com/zh-CN/trade/${s}_USDT`;
+            case 'binance-chain': {
+                // 链上K线用 dex.binance.com 或 pancakeswap
+                const alphaSym = alphaSymbol || '';
+                return alphaSym
+                    ? `https://www.binance.com/zh-CN/alpha`
+                    : `https://pancakeswap.finance/swap`;
+            }
+            case 'okx':     return `https://www.okx.com/trade-spot/${s.toLowerCase()}-usdt`;
+            case 'gate':    return `https://www.gate.io/trade/${s}_USDT`;
+            case 'mexc':    return `https://www.mexc.com/zh-CN/exchange/${s}_USDT`;
+            case 'futures': return `https://www.bitget.com/futures/usdt/${s}USDT`;
+            default:        return `https://www.bitget.com/spot/${s}USDT`;
+        }
+    }
+
+    // ── 数字格式化 ────────────────────────────────────────────────
+    function trimZeros(str) {
+        if (!str.includes('.')) return str;
+        return str.replace(/\.?0+$/, '');
+    }
+
+    function compactPrice(numStr) {
+        const s = trimZeros(numStr);
+        const m = s.match(/^(0\.)(0{4,})(\d+)$/);
+        if (!m) return s;
+        return `0.{${m[2].length}}${m[3]}`;
+    }
+
+    function fmtPrice(numStr) { return compactPrice(trimZeros(numStr)); }
+
+    function fmtVol(val) {
+        if (!val && val !== 0) return '--';
+        if (val >= 100000000) return (val / 100000000).toFixed(1) + ' 万亿';
+        if (val >= 10000) return (val / 10000).toFixed(1) + ' 亿';
+        return val.toFixed(1) + ' 万';
+    }
+
+    function fmtMktcap(val) {
+        if (!val && val !== 0) return '--';
+        if (val >= 100000000) return (val / 100000000).toFixed(1) + ' 万亿';
+        if (val >= 100000) return (val / 10000).toFixed(1) + ' 亿';
+        return val.toFixed(1) + ' 万';
+    }
+
+    function fmtNum(v, digits = 2) {
+        if (v == null || isNaN(v)) return '--';
+        if (v >= 1e9)  return (v / 1e9).toFixed(digits) + 'B';
+        if (v >= 1e6)  return (v / 1e6).toFixed(digits) + 'M';
+        if (v >= 1e3)  return (v / 1e3).toFixed(digits) + 'K';
+        return v.toFixed(digits);
+    }
+
+    // ── 来源标签 ──────────────────────────────────────────────────
+    const SOURCE_LABEL  = { spot: 'BG', futures: '合约', binance: '币安', 'binance-chain': '链上', okx: 'OKX', gate: 'Gate', mexc: '抹茶', us: '美股', hk: '港股', cn: 'A股' };
+    const SOURCE_COLOR  = { spot: '#0f6fff', futures: '#e67e00', binance: '#b38600', 'binance-chain': '#7c3aed', okx: '#0f6fff', gate: '#1a99cc', mexc: '#1e80ff', us: '#c0392b', hk: '#cc0000', cn: '#d4380d' };
+    const SOURCE_BG     = { spot: '#e8f0ff', futures: '#fff4e5', binance: '#fffbea', 'binance-chain': '#ede9fe', okx: '#e8f0ff', gate: '#e0f7fa', mexc: '#e8f3ff', us: '#fdecea', hk: '#fdecea', cn: '#fff1ee' };
+    const SOURCE_BORDER = { spot: '#aac8ff', futures: '#ffd591', binance: '#ffe58f', 'binance-chain': '#c4b5fd', okx: '#aac8ff', gate: '#80d8ea', mexc: '#93c5fd', us: '#f5b7b1', hk: '#f5b7b1', cn: '#ffb8a0' };
+
+    function srcTag(src) {
+        const label = SOURCE_LABEL[src] || '';
+        if (!label) return '';
+        return `<span style="display:inline-block;font-size:10px;font-weight:500;color:${SOURCE_COLOR[src]};background:${SOURCE_BG[src]};border:1px solid ${SOURCE_BORDER[src]};border-radius:3px;padding:1px 5px;vertical-align:middle;line-height:1.4">${label}</span>`;
+    }
+
+    // ── 币安 Alpha token/list 缓存：symbol → alphaSymbol ─────────
+    // alphaSymbol 示例: ARTX → ALPHA_474USDT
+    const alphaSymbolMap = {'ARTX': 'ALPHA_474USDT'}; // { 'ARTX': 'ALPHA_474USDT', ... }
+    let alphaMapLoaded = false;
+    let alphaMapLoading = false;
+
+    // ── 列拖拽排序 ────────────────────────────────────────────────
+    let _dragSrcKey = null;
+
+    function onColDragStart(e, key) {
+        _dragSrcKey = key;
+        e.dataTransfer.effectAllowed = 'move';
+        e.dataTransfer.setData('text/plain', key);
+    }
+
+    function onColDragOver(e, key) {
+        if (!_dragSrcKey || _dragSrcKey === key) return;
+        e.preventDefault();
+        e.dataTransfer.dropEffect = 'move';
+        document.querySelectorAll('#theadRow th').forEach(th => th.classList.remove('col-drag-over'));
+        const idx = visibleCols.indexOf(key);
+        const ths = document.querySelectorAll('#theadRow th');
+        if (ths[idx]) ths[idx].classList.add('col-drag-over');
+    }
+
+    function onColDragLeave(e) { e.currentTarget.classList.remove('col-drag-over'); }
+
+    function onColDrop(e, key) {
+        e.preventDefault();
+        document.querySelectorAll('#theadRow th').forEach(th => th.classList.remove('col-drag-over'));
+        if (!_dragSrcKey || _dragSrcKey === key) return;
+        if (_dragSrcKey === 'symbol' || key === 'symbol') return;
+        const fromIdx = visibleCols.indexOf(_dragSrcKey);
+        const toIdx   = visibleCols.indexOf(key);
+        if (fromIdx < 0 || toIdx < 0) return;
+        visibleCols.splice(fromIdx, 1);
+        visibleCols.splice(toIdx, 0, _dragSrcKey);
+        _dragSrcKey = null;
+        renderHeader();
+        renderTable();
+    }
+
+    function onColDragEnd() {
+        _dragSrcKey = null;
+        document.querySelectorAll('#theadRow th').forEach(th => th.classList.remove('col-drag-over'));
+    }
+
+    // ── 表头渲染 ──────────────────────────────────────────────────
+    function renderHeader() {
+        const tr = document.getElementById('theadRow');
+        tr.innerHTML = visibleCols.map(key => {
+            const col = getCol(key);
+            const isSortable = !!col.sortField;
+            const isActive   = sortKey === col.sortField;
+            const arrow      = isActive ? (sortDir === 1 ? ' ▼' : ' ▲') : '';
+            const sortClass  = isSortable ? 'sortable' : '';
+            const activeClass= isActive   ? 'col-active' : '';
+            const onclick    = isSortable ? `onclick="setSort('${col.sortField}')"` : '';
+            const draggable  = key !== 'symbol' ? 'draggable="true"' : '';
+            const dragEvents = key !== 'symbol'
+                ? `ondragstart="onColDragStart(event,'${key}')" ondragover="onColDragOver(event,'${key}')" ondragleave="onColDragLeave(event)" ondrop="onColDrop(event,'${key}')" ondragend="onColDragEnd()"`
+                : `ondragover="onColDragOver(event,'${key}')" ondrop="onColDrop(event,'${key}')"`;
+            const delBtn = key !== 'symbol'
+                ? `<span class="col-del" title="隐藏此列" onclick="removeCol('${key}');event.stopPropagation()">✕</span>`
+                : '';
+            return `<th class="${sortClass} ${activeClass}" style="width:${col.width}px" ${onclick} ${draggable} ${dragEvents}>` +
+                   `<div class="th-inner">${col.label}${arrow ? `<span style="font-size:11px">${arrow}</span>` : ''}</div>` +
+                   `${delBtn}` +
+                   `<div class="resize-handle" onmousedown="startResize(event,'${key}')"></div>` +
+                   `</th>`;
+        }).join('');
+        renderSortButtons();
+    }
+
+    function renderSortButtons() {
+        const sg = document.getElementById('sortGroup');
+        const sortableCols = ALL_COLS.filter(c => c.sortField && visibleCols.includes(c.key));
+        const btns = [{ label: '默认', field: 'default' }, ...sortableCols.map(c => ({ label: c.label.replace(/\(.*\)/, '').trim(), field: c.sortField }))];
+        sg.innerHTML = btns.map(b => {
+            const isActive = sortKey === b.field;
+            const arrow    = isActive ? (sortDir === 1 ? ' ▼' : ' ▲') : '';
+            return `<button class="sort-btn${isActive ? ' active' : ''}" onclick="setSort('${b.field}')">${b.label}${arrow}</button>`;
+        }).join('');
+    }
+
+    // ── 列排序 ────────────────────────────────────────────────────
+    function setSort(key) {
+        if (sortKey === key) sortDir = -sortDir;
+        else { sortKey = key; sortDir = 1; }
+        renderHeader();
+        renderTable();
+    }
+
+    function sortedRows() {
+        if (sortKey === 'default') return [...rows];
+        return [...rows].sort((a, b) => {
+            const da = cache[a.id], db = cache[b.id];
+            if (!da && !db) return 0;
+            if (!da) return 1;
+            if (!db) return -1;
+            const va = da[sortKey] ?? -Infinity;
+            const vb = db[sortKey] ?? -Infinity;
+            return (vb - va) * sortDir;
+        });
+    }
+
+    // ── 列删除 ───────────────────────────────────────────────────
+    function removeCol(key) {
+        visibleCols = visibleCols.filter(k => k !== key);
+        renderHeader();
+        renderTable();
+    }
+
+    // ── 列宽拖拽 ─────────────────────────────────────────────────
+    let _resizeKey = null, _resizeStartX = 0, _resizeStartW = 0;
+
+    function startResize(e, key) {
+        e.preventDefault();
+        _resizeKey = key;
+        _resizeStartX = e.clientX;
+        _resizeStartW = getCol(key).width;
+        e.target.classList.add('dragging');
+        document.addEventListener('mousemove', onResize);
+        document.addEventListener('mouseup', stopResize);
+    }
+
+    function onResize(e) {
+        if (!_resizeKey) return;
+        const col = getCol(_resizeKey);
+        col.width = Math.max(60, _resizeStartW + (e.clientX - _resizeStartX));
+        const idx = visibleCols.indexOf(_resizeKey);
+        const ths = document.querySelectorAll('#theadRow th');
+        if (ths[idx]) ths[idx].style.width = col.width + 'px';
+    }
+
+    function stopResize() {
+        if (_resizeKey) {
+            document.querySelectorAll('.resize-handle').forEach(h => h.classList.remove('dragging'));
+            _resizeKey = null;
+        }
+        document.removeEventListener('mousemove', onResize);
+        document.removeEventListener('mouseup', stopResize);
+    }
+
+    // ── 行渲染 ────────────────────────────────────────────────────
+    function renderTable() {
+        const tbody = document.getElementById('tableBody');
+        const ordered = sortedRows();
+        tbody.innerHTML = ordered.map(row => {
+            const { id, sym, exchange } = row;
+            const d = cache[id];
+            const src = d ? (d.source || 'spot') : (exchange || '');
+            const alphaSymbolResolved = d ? (d.alphaSymbol || '') : '';
+            const chartUrl = getChartUrl(sym, src, alphaSymbolResolved);
+            const removeBtn = `<button class="sort-btn" style="padding:2px 6px;font-size:11px;flex-shrink:0" onclick="removeRow('${id}')">✕</button>`;
+
+            // 链上行：单独一行展示链上详情
+            if (exchange === 'binance-chain' || src === 'binance-chain') {
+                const isLoading = !d;
+                const alphaUrl = alphaSymbolResolved
+                    ? `https://www.binance.com/zh-CN/alpha`
+                    : `https://www.binance.com/zh-CN/alpha`;
+
+                if (isLoading) {
+                    return `<tr class="chain-row"><td colspan="${visibleCols.length}">` +
+                        `<div class="chain-inline">` +
+                        `<a class="sym-link" href="${alphaUrl}" target="_blank" rel="noopener">${sym}</a>` +
+                        `<span class="chain-inline-label">链上</span>` +
+                        `<span class="chain-inline-loading">查询中...</span>` +
+                        `${removeBtn}` +
+                        `</div></td></tr>`;
+                }
+
+                const changeClass = d.change > 0 ? 'up' : d.change < 0 ? 'down' : 'neutral';
+                const changeStr = (d.change > 0 ? '+' : '') + d.change.toFixed(2) + '%';
+                const extraFields = [];
+                if (d.vol > 0)    extraFields.push(`成交额: <b>${fmtVol(d.vol)}万$</b>`);
+                if (d.high)       extraFields.push(`最高: <b class="high-val">${fmtPrice(d.high)}</b>`);
+                if (d.low)        extraFields.push(`最低: <b class="low-val">${fmtPrice(d.low)}</b>`);
+                if (d.mktcap)     extraFields.push(`市值: <b>${fmtMktcap(d.mktcap)}万$</b>`);
+                if (d.liquidity)  extraFields.push(`流动性: <b>$${fmtNum(d.liquidity)}</b>`);
+                if (d.alphaSymbol) extraFields.push(`Alpha: <b style="color:#7c3aed">${d.alphaSymbol}</b>`);
+
+                return `<tr class="chain-row"><td colspan="${visibleCols.length}">` +
+                    `<div class="chain-inline">` +
+                    `<a class="sym-link" href="${alphaUrl}" target="_blank" rel="noopener">${sym}</a>` +
+                    `<span class="chain-inline-label">链上</span>` +
+                    `<span class="price-val" style="font-size:13px">$${fmtPrice(d.price)}</span>` +
+                    `<span class="${changeClass}" style="font-size:12px">${changeStr}</span>` +
+                    (extraFields.length ? `<span style="color:#aaa;font-size:11px">&nbsp;|&nbsp;</span>` + extraFields.join(`<span style="color:#ddd;margin:0 6px">|</span>`) : '') +
+                    `${removeBtn}` +
+                    `</div></td></tr>`;
+            }
+
+            const ampHighlight = d && d.amp != null && d.amp > 10 ? ' amp-highlight' : '';
+
+            const cells = visibleCols.map(key => {
+                if (!d) {
+                    if (key === 'symbol') return `<td><div class="symbol-cell"><a class="sym-link" href="${chartUrl}" target="_blank" rel="noopener">${sym}</a>${exchange ? srcTag(exchange) : ''}${removeBtn}</div></td>`;
+                    return `<td class="neutral">--</td>`;
+                }
+
+                if (key === 'symbol') {
+                    return `<td><div class="symbol-cell"><a class="sym-link" href="${chartUrl}" target="_blank" rel="noopener">${sym}</a>${srcTag(src)}${removeBtn}</div></td>`;
+                }
+
+                if (key === 'price') {
+                    let extra = '';
+                    if (src === 'futures' && d.markPrice) {
+                        const frClass = parseFloat(d.capitalRate) >= 0 ? 'up' : 'down';
+                        const frSign  = parseFloat(d.capitalRate) >= 0 ? '+' : '';
+                        extra = `<div style="font-size:11px;color:#999;margin-top:2px;font-weight:400">` +
+                            `标记价 <span style="color:#555">${fmtPrice(d.markPrice)}</span>` +
+                            ` &nbsp;|&nbsp; 资金费率 <span class="${frClass}">${frSign}${d.capitalRate}%</span>` +
+                            `</div>`;
+                    }
+                    return `<td class="price-val">${fmtPrice(d.price)}${extra}</td>`;
+                }
+
+                if (key === 'change') {
+                    const cls = d.change > 0 ? 'up' : d.change < 0 ? 'down' : 'neutral';
+                    const str = (d.change > 0 ? '+' : '') + d.change.toFixed(2) + '%';
+                    return `<td class="${cls}">${str}</td>`;
+                }
+
+                if (key === 'amp') {
+                    const ampCls = d.amp > 10 ? ' style="font-weight:700;color:#e67e00"' : '';
+                    return `<td${ampCls}>${d.amp.toFixed(2)}%</td>`;
+                }
+
+                if (key === 'vol')    return `<td>${fmtVol(d.vol)}</td>`;
+                if (key === 'mktcap') return `<td>${fmtMktcap(d.mktcap)}</td>`;
+                if (key === 'high')   return `<td class="high-val">${fmtPrice(d.high)}</td>`;
+                if (key === 'low')    return `<td class="low-val">${fmtPrice(d.low)}</td>`;
+
+                return `<td>--</td>`;
+            });
+
+            return `<tr class="${ampHighlight.trim()}">${cells.join('')}</tr>`;
+        }).join('');
+    }
+
+    // ── Fetch（支持指定交易所） ───────────────────────────────────
+    async function fetchAll() {
+        await Promise.all(rows.map(row => fetchRow(row)));
+        updateAllMktcap();
+        await updatePreSaleMktcap();
+        renderTable();
+        document.getElementById('statusLine').textContent = '更新于: ' + new Date().toLocaleTimeString();
+    }
+
+    const STOCK_MAP = {
+        '小米': { market: 'hk', code: '01810' },
+        '茅台': { market: 'cn', code: 'SH600519' },
+    };
+
+    async function fetchRow(row) {
+        const { id, sym, exchange } = row;
+        if (STOCK_MAP[sym]) { await fetchStock(id, sym); return; }
+        const s = apiSym(sym);
+
+        if (exchange === 'binance-chain') { await fetchBinanceChain(id, s); return; }
+        if (exchange === 'binance') { await fetchBinanceSpot(id, s); return; }
+        if (exchange === 'okx')     { await fetchOKX(id, s); return; }
+        if (exchange === 'gate')    { await fetchGate(id, s); return; }
+        if (exchange === 'mexc')    { await fetchMexc(id, s); return; }
+        if (exchange === 'bitget')  { await fetchBitgetSpot(id, s) || await fetchBitgetFutures(id, s); return; }
+
+        // 自动模式：依次尝试
+        if (await fetchBitgetSpot(id, s)) return;
+        if (await fetchBitgetFutures(id, s)) return;
+        if (await fetchBinanceSpot(id, s)) return;
+        if (await fetchOKX(id, s)) return;
+        if (await fetchGate(id, s)) return;
+        if (await fetchMexc(id, s)) return;
+        delete cache[id];
+    }
+
+    async function fetchBitgetSpot(id, s) {
+        try {
+            const resp = await fetch(`https://api.bitget.com/api/v2/spot/market/tickers?symbol=${s}USDT`);
+            const json = await resp.json();
+            if (json.code === '00000' && json.data?.[0]) {
+                const d = json.data[0];
+                const open  = parseFloat(d.open);
+                const price = parseFloat(d.lastPr);
+                const decimals = price >= 1000 ? 2 : price >= 1 ? 4 : 8;
+                cache[id] = {
+                    price:  price.toFixed(decimals),
+                    change: parseFloat(d.changeUtc24h) * 100,
+                    amp:    open > 0 ? (parseFloat(d.high24h) - parseFloat(d.low24h)) / open * 100 : 0,
+                    vol:    parseFloat(d.quoteVolume) / 10000,
+                    mktcap: null,
+                    high:   parseFloat(d.high24h).toFixed(decimals),
+                    low:    parseFloat(d.low24h).toFixed(decimals),
+                    source: 'spot',
+                };
+                return true;
+            }
+        } catch {}
+        return false;
+    }
+
+    async function fetchBitgetFutures(id, s) {
+        try {
+            const resp = await fetch(`https://api.bitget.com/api/v2/mix/market/ticker?symbol=${s}USDT&productType=USDT-FUTURES`);
+            const json = await resp.json();
+            if (json.code === '00000' && json.data?.[0]) {
+                const d = json.data[0];
+                const price   = parseFloat(d.lastPr);
+                const open24h = parseFloat(d.open24h);
+                const openUtc = parseFloat(d.openUtc);
+                const high    = parseFloat(d.high24h);
+                const low     = parseFloat(d.low24h);
+                const decimals = price >= 1000 ? 2 : price >= 1 ? 4 : 8;
+                cache[id] = {
+                    price:      price.toFixed(decimals),
+                    change:     openUtc > 0 ? (price - openUtc) / openUtc * 100 : parseFloat(d.changeUtc24h) * 100,
+                    amp:        open24h > 0 ? (high - low) / open24h * 100 : 0,
+                    vol:        parseFloat(d.quoteVolume) / 10000,
+                    mktcap:     null,
+                    high:       high.toFixed(decimals),
+                    low:        low.toFixed(decimals),
+                    markPrice:  parseFloat(d.markPrice).toFixed(decimals),
+                    capitalRate: (parseFloat(d.fundingRate) * 100).toFixed(4),
+                    source: 'futures',
+                };
+                return true;
+            }
+        } catch {}
+        return false;
+    }
+
+    async function fetchBinanceSpot(id, s) {
+        try {
+            const resp = await fetch(`https://api.binance.com/api/v3/ticker/24hr?symbol=${s}USDT`);
+            const json = await resp.json();
+            if (json.lastPrice) {
+                const price = parseFloat(json.lastPrice);
+                const open  = parseFloat(json.openPrice);
+                const high  = parseFloat(json.highPrice);
+                const low   = parseFloat(json.lowPrice);
+                const decimals = price >= 1000 ? 2 : price >= 1 ? 4 : 8;
+                cache[id] = {
+                    price:  price.toFixed(decimals),
+                    change: parseFloat(json.priceChangePercent),
+                    amp:    open > 0 ? (high - low) / open * 100 : 0,
+                    vol:    parseFloat(json.quoteVolume) / 10000,
+                    mktcap: null,
+                    high:   high.toFixed(decimals),
+                    low:    low.toFixed(decimals),
+                    source: 'binance',
+                };
+                return true;
+            }
+        } catch {}
+        return false;
+    }
+
+    async function fetchOKX(id, s) {
+        try {
+            const resp = await fetch(`https://www.okx.com/api/v5/market/ticker?instId=${s}-USDT`);
+            const json = await resp.json();
+            if (json.code === '0' && json.data?.[0]) {
+                const d = json.data[0];
+                const price = parseFloat(d.last);
+                const open  = parseFloat(d.open24h);
+                const high  = parseFloat(d.high24h);
+                const low   = parseFloat(d.low24h);
+                const decimals = price >= 1000 ? 2 : price >= 1 ? 4 : 8;
+                cache[id] = {
+                    price:  price.toFixed(decimals),
+                    change: open > 0 ? (price - open) / open * 100 : 0,
+                    amp:    open > 0 ? (high - low) / open * 100 : 0,
+                    vol:    parseFloat(d.volCcy24h) / 10000,
+                    mktcap: null,
+                    high:   high.toFixed(decimals),
+                    low:    low.toFixed(decimals),
+                    source: 'okx',
+                };
+                return true;
+            }
+        } catch {}
+        return false;
+    }
+
+    async function fetchGate(id, s) {
+        try {
+            const resp = await fetch(`https://api.gateio.ws/api/v4/spot/tickers?currency_pair=${s}_USDT`);
+            const json = await resp.json();
+            if (Array.isArray(json) && json[0]?.last) {
+                const d = json[0];
+                const price = parseFloat(d.last);
+                const open  = parseFloat(d.open_24h || 0);
+                const high  = parseFloat(d.high_24h);
+                const low   = parseFloat(d.low_24h);
+                const decimals = price >= 1000 ? 2 : price >= 1 ? 4 : 8;
+                cache[id] = {
+                    price:  price.toFixed(decimals),
+                    change: parseFloat(d.change_percentage || 0),
+                    amp:    open > 0 ? (high - low) / open * 100 : 0,
+                    vol:    parseFloat(d.quote_volume || 0) / 10000,
+                    mktcap: null,
+                    high:   high.toFixed(decimals),
+                    low:    low.toFixed(decimals),
+                    source: 'gate',
+                };
+                return true;
+            }
+        } catch {}
+        return false;
+    }
+
+    // ── MEXC 抹茶现货 ─────────────────────────────────────────────
+    async function fetchMexc(id, s) {
+        try {
+            const resp = await fetch(`https://api.mexc.com/api/v3/ticker/24hr?symbol=${s}USDT`);
+            const json = await resp.json();
+            // MEXC 返回单个对象（指定 symbol 时）
+            const d = Array.isArray(json) ? json[0] : json;
+            if (d && d.lastPrice) {
+                const price = parseFloat(d.lastPrice);
+                const open  = parseFloat(d.openPrice || d.prevClosePrice || 0);
+                const high  = parseFloat(d.highPrice);
+                const low   = parseFloat(d.lowPrice);
+                const decimals = price >= 1000 ? 2 : price >= 1 ? 4 : 8;
+                cache[id] = {
+                    price:  price.toFixed(decimals),
+                    change: parseFloat(d.priceChangePercent || 0),
+                    amp:    open > 0 ? (high - low) / open * 100 : 0,
+                    vol:    parseFloat(d.quoteVolume || 0) / 10000,
+                    mktcap: null,
+                    high:   high.toFixed(decimals),
+                    low:    low.toFixed(decimals),
+                    source: 'mexc',
+                };
+                return true;
+            }
+        } catch {}
+        return false;
+    }
+
+    // ── 币安链上 Alpha Trade ───────────────────────────────────────
+    // 流程：先用 token/list 找 alphaSymbol，再用 ticker 接口拿价格
+    async function fetchBinanceChain(id, s) {
+        const alphaSymbol = alphaSymbolMap[s];
+
+        try {
+            const resp = await fetch(
+                `https://www.binance.com/bapi/defi/v1/public/alpha-trade/ticker?symbol=${alphaSymbol}`,
+                { headers: { Accept: 'application/json', clienttype: 'web', Referer: 'https://www.binance.com/zh-CN/alpha' } }
+            );
+            const json = await resp.json();
+            // 响应结构：{ data: { lastPrice, priceChangePercent, volume, quoteVolume, highPrice, lowPrice, ... } }
+            const d = json?.data || json;
+            const price  = parseFloat(d.lastPrice || d.price || d.c || 0);
+            const open   = parseFloat(d.openPrice || d.prevClosePrice || d.o || 0);
+            const high   = parseFloat(d.highPrice || d.h || 0);
+            const low    = parseFloat(d.lowPrice  || d.l || 0);
+            const vol    = parseFloat(d.quoteVolume || d.volume || d.v || 0);
+            const chg    = parseFloat(d.priceChangePercent || d.P || 0);
+            const liquidity = parseFloat(d.liquidity || d.tvl || 0);
+
+            if (price > 0) {
+                const decimals = price >= 1000 ? 2 : price >= 1 ? 4 : 8;
+                cache[id] = {
+                    price:      price.toFixed(decimals),
+                    change:     chg,
+                    amp:        open > 0 ? (high - low) / open * 100 : 0,
+                    vol:        vol / 10000,
+                    mktcap:     parseFloat(d.marketCap || d.fullyDilutedValuation || 0) / 10000 || null,
+                    high:       high.toFixed(decimals),
+                    low:        low.toFixed(decimals),
+                    source:     'binance-chain',
+                    alphaSymbol,
+                    liquidity,
+                };
+                return true;
+            }
+        } catch {}
+
+        // ticker 接口返回空或失败时，仅记录 alphaSymbol
+        cache[id] = {
+            price: '0', change: 0, amp: 0, vol: 0, mktcap: null,
+            high: '0', low: '0', source: 'binance-chain', alphaSymbol,
+        };
+        return false;
+    }
+
+    // ── 股票行情 ──────────────────────────────────────────────────
+    async function fetchStock(id, sym) {
+        const info = STOCK_MAP[sym];
+        if (!info) return;
+        if (info.market === 'hk') await fetchHKStock(id, sym, info.code);
+        else if (info.market === 'cn') await fetchCNStock(id, sym, info.code);
+    }
+
+    async function fetchHKStock(id, sym, code) {
+        const yahooCode = code.replace(/^0+/, '') + '.HK';
+        try {
+            const resp = await fetch(`https://query1.finance.yahoo.com/v8/finance/chart/${yahooCode}?interval=1d&range=2d`, { headers: { 'Accept': 'application/json' } });
+            const json = await resp.json();
+            const r = json?.chart?.result?.[0];
+            if (r) {
+                const meta = r.meta;
+                const price  = meta.regularMarketPrice;
+                const prev   = meta.chartPreviousClose || meta.previousClose;
+                const high   = meta.regularMarketDayHigh;
+                const low    = meta.regularMarketDayLow;
+                const vol    = meta.regularMarketVolume * price / 1e8;
+                const change = prev > 0 ? (price - prev) / prev * 100 : 0;
+                const amp    = prev > 0 ? (high - low) / prev * 100 : 0;
+                cache[id] = { price: price.toFixed(2), change, amp, vol, mktcap: null, high: high.toFixed(2), low: low.toFixed(2), source: 'hk' };
+                return;
+            }
+        } catch {}
+        try {
+            const sinaCode = 'hk' + code;
+            const resp = await fetch(`https://hq.sinajs.cn/list=${sinaCode}`, { headers: { Referer: 'https://finance.sina.com.cn' } });
+            const text = await resp.text();
+            const m = text.match(/"([^"]+)"/);
+            if (m) {
+                const parts = m[1].split(',');
+                const price  = parseFloat(parts[3] || parts[6]);
+                const prev   = parseFloat(parts[2]);
+                const high   = parseFloat(parts[4]);
+                const low    = parseFloat(parts[5]);
+                const vol    = parseFloat(parts[12] || 0) * price / 1e8;
+                const change = prev > 0 ? (price - prev) / prev * 100 : 0;
+                const amp    = prev > 0 ? (high - low) / prev * 100 : 0;
+                if (price > 0) { cache[id] = { price: price.toFixed(2), change, amp, vol, mktcap: null, high: high.toFixed(2), low: low.toFixed(2), source: 'hk' }; return; }
+            }
+        } catch {}
+        delete cache[id];
+    }
+
+    async function fetchCNStock(id, sym, code) {
+        try {
+            const sinaCode = code.toLowerCase();
+            const resp = await fetch(`https://hq.sinajs.cn/list=${sinaCode}`, { headers: { Referer: 'https://finance.sina.com.cn' } });
+            const text = await resp.text();
+            const m = text.match(/"([^"]+)"/);
+            if (m) {
+                const parts = m[1].split(',');
+                const price  = parseFloat(parts[3]);
+                const prev   = parseFloat(parts[2]);
+                const high   = parseFloat(parts[4]);
+                const low    = parseFloat(parts[5]);
+                const vol    = parseFloat(parts[8] || 0) * price / 1e8;
+                const change = prev > 0 ? (price - prev) / prev * 100 : 0;
+                const amp    = prev > 0 ? (high - low) / prev * 100 : 0;
+                if (price > 0) { cache[id] = { price: price.toFixed(2), change, amp, vol, mktcap: null, high: high.toFixed(2), low: low.toFixed(2), source: 'cn' }; return; }
+            }
+        } catch {}
+        try {
+            const resp = await fetch(`https://qt.gtimg.cn/q=${code.toLowerCase()}`);
+            const text = await resp.text();
+            const m = text.match(/="([^"]+)"/);
+            if (m) {
+                const parts = m[1].split('~');
+                const price  = parseFloat(parts[3]);
+                const prev   = parseFloat(parts[4]);
+                const high   = parseFloat(parts[33]);
+                const low    = parseFloat(parts[34]);
+                const vol    = parseFloat(parts[6] || 0) * price / 1e8;
+                const change = prev > 0 ? (price - prev) / prev * 100 : 0;
+                const amp    = prev > 0 ? (high - low) / prev * 100 : 0;
+                if (price > 0) { cache[id] = { price: price.toFixed(2), change, amp, vol, mktcap: null, high: high.toFixed(2), low: low.toFixed(2), source: 'cn' }; return; }
+            }
+        } catch {}
+        delete cache[id];
+    }
+
+    // ── 流通量 & 市值 ─────────────────────────────────────────────
+    const CIRCULATING_SUPPLY = {
+        BTC: 19800000, ETH: 120000000, RSKHY: 7289000000, SKHY: 7289000000, MRVL: 875000000,
+         BNB: 140000000, SOL: 490000000, SKHYNIX: 708300000,
+        DOGE: 146000000000, GRAM: 2500000000, ONDO: 486900000000, SHIB: 589000000000000,
+        UNI: 600000000, SUI: 3100000000, HYPE: 254000000, BGB: 700000000,
+        MU: 1200000000, OKB: 21000000, MATIC: 10000000000, AVAX: 410000000,
+        LINK: 600000000, DOT: 1400000000, ADA: 35000000000, XRP: 57000000000,
+        LTC: 74000000, BCH: 19700000, ATOM: 390000000, FIL: 580000000,
+        APT: 540000000, ARB: 3900000000, OP: 1200000000,
+        SPCX: 11923076920, PREOPAI: 1241290000, 茅台: 1252270215 * 0.15,
+        ARTX: 42400000, 币安人生: 100000000, DYDX: 41650000, 小米: 25922000000 * 0.13,
+      NVDA: 24300000000, AAPL: 14776000000, GOOGL: 12097000000, TSLA: 3752000000, SNDK: 148089800,
+    };
+
+    const PRE_SALE_SYMBOLS = { SPCX: 'SPCXUSDT', PREOPAI: 'PREOPAIUSDT' };
+
+    async function fetchPreSaleMktcap(sym) {
+        const bgSym = PRE_SALE_SYMBOLS[sym];
+        if (!bgSym) return null;
+        const paths = [`/v1/spot/market/overview?symbol=${bgSym}`, `/v1/spot/market-overview?symbol=${bgSym}`];
+        for (const path of paths) {
+            try {
+                const resp = await fetch(`https://www.bitget.com${path}`, { headers: { 'Accept': 'application/json', 'Referer': `https://www.bitget.com/spot/${bgSym}` } });
+                const json = await resp.json();
+                if (json.code === '00000' && json.data) {
+                    const mc = parseFloat(json.data.marketCap || json.data.market_cap || 0);
+                    if (mc > 0) return mc / 10000;
+                }
+            } catch {}
+        }
+        return null;
+    }
+
+    function calcMktcap(id, sym) {
+        const supply = CIRCULATING_SUPPLY[apiSym(sym)] || CIRCULATING_SUPPLY[sym];
+        if (!supply || !cache[id]) return null;
+        return parseFloat(cache[id].price) * supply / 10000;
+    }
+
+    function updateAllMktcap() {
+        rows.forEach(row => {
+            if (cache[row.id]) cache[row.id].mktcap = calcMktcap(row.id, row.sym);
+        });
+    }
+
+    async function updatePreSaleMktcap() {
+        await Promise.all(rows.map(async row => {
+            if (!cache[row.id]) return;
+            if (cache[row.id].mktcap != null) return;
+            const mc = await fetchPreSaleMktcap(row.sym);
+            if (mc != null && cache[row.id]) cache[row.id].mktcap = mc;
+        }));
+    }
+
+    // ── Add / Remove ──────────────────────────────────────────────
+    function addSymbol() {
+        const input = document.getElementById('addInput');
+        const exchSel = document.getElementById('addExchange');
+        const raw = input.value.trim();
+        if (!raw) return;
+        const sym = /^[一-龥]/.test(raw) ? raw : raw.toUpperCase().replace(/USDT$/, '');
+        const exchange = exchSel.value; // '' | 'bitget' | 'binance' | 'binance-chain' | 'okx' | 'gate' | 'mexc'
+        const id = sym + '@' + (exchange || 'auto') + '_' + Date.now();
+
+        input.value = '';
+        rows.push({ id, sym, exchange });
+        renderTable();
+
+        const doFetch = async () => {
+            await fetchRow({ id, sym, exchange });
+            if (cache[id] && exchange !== 'binance-chain') {
+                cache[id].mktcap = calcMktcap(id, sym);
+                if (cache[id].mktcap == null && PRE_SALE_SYMBOLS[sym]) {
+                    const mc = await fetchPreSaleMktcap(sym);
+                    if (mc != null && cache[id]) { cache[id].mktcap = mc; renderTable(); }
+                }
+            }
+            renderTable();
+        };
+        doFetch();
+    }
+
+    function removeRow(id) {
+        rows = rows.filter(r => r.id !== id);
+        delete cache[id];
+        renderTable();
+    }
+
+    // ── Init ──────────────────────────────────────────────────────
+    Object.keys(STOCK_MAP).forEach(name => {
+        if (!rows.find(r => r.sym === name)) rows.push({ id: name + '@auto', sym: name, exchange: '' });
+    });
+
+    renderHeader();
+    renderTable();
+    fetchAll();
+    setInterval(fetchAll, 3000);
+</script>
+
+</body>
+</html>
