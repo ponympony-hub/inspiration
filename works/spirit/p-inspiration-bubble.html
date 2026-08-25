@@ -735,7 +735,62 @@
       font-family: inherit;
       white-space: nowrap;
     }
-  </style>
+  
+/* ---------- Cloud Sync Modal ---------- */
+#btn-cloud-sync { position: relative; }
+#btn-cloud-sync .sync-dot {
+  display:none; position:absolute; top:-3px; right:-3px; width:8px; height:8px;
+  background:#34c759; border-radius:50%; border:1.5px solid rgba(255,255,255,.2);
+}
+#btn-cloud-sync.has-sync .sync-dot { display:block; }
+#sync-modal-overlay {
+  display:none; position:fixed; inset:0; z-index:999;
+  background:rgba(0,0,0,.55); backdrop-filter:blur(4px);
+  align-items:center; justify-content:center;
+}
+#sync-modal-overlay.open { display:flex; }
+#sync-modal {
+  width:min(400px,90vw); background:#131e31;
+  border:1px solid rgba(255,255,255,.12); border-radius:16px;
+  padding:24px; color:#e2e8f0; box-shadow:0 20px 60px rgba(0,0,0,.5);
+}
+.sync-modal-header { display:flex; align-items:center; gap:10px; margin-bottom:16px; }
+.sync-modal-header h3 { flex:1; margin:0; font-size:18px; }
+.sync-modal-icon { font-size:22px; }
+#sync-close { background:none;border:none;color:#94a3b8;font-size:16px;cursor:pointer;padding:4px; }
+#sync-close:hover { color:#fff; }
+.sync-steps { font-size:13px; color:#94a3b8; line-height:1.8; padding-left:18px; margin:12px 0; }
+.sync-steps code { background:rgba(59,130,246,.15);padding:2px 6px;border-radius:4px;font-size:12px; }
+.sync-link {
+  display:block; text-align:center; margin:14px 0; padding:10px;
+  background:rgba(59,130,246,.15); border:1px solid rgba(59,130,246,.3);
+  border-radius:10px; color:#93c5fd; text-decoration:none; font-size:14px;
+}
+.sync-link:hover { background:rgba(59,130,246,.25); }
+#sync-token-input {
+  width:100%; padding:10px 12px; margin-bottom:12px;
+  background:#0b1426; border:1px solid rgba(255,255,255,.15); border-radius:8px;
+  color:#fff; font-size:14px; outline:none;
+}
+#sync-token-input:focus { border-color:#3b82f6; }
+.sync-primary-btn {
+  width:100%; padding:11px; background:#3b82f6; border:none; border-radius:8px;
+  color:#fff; font-size:15px; cursor:pointer; transition:background .2s;
+}
+.sync-primary-btn:hover { background:#2563eb; }
+.sync-status-row { display:flex; justify-content:space-between; font-size:13px; margin-bottom:14px; }
+.sync-label { color:#94a3b8; }
+.sync-actions { display:flex; gap:10px; margin-bottom:14px; }
+.sync-action-btn {
+  flex:1; padding:10px; background:rgba(59,130,246,.15); border:1px solid rgba(59,130,246,.3);
+  border-radius:8px; color:#93c5fd; font-size:14px; cursor:pointer; transition:background .2s;
+}
+.sync-action-btn:hover { background:rgba(59,130,246,.3); }
+#sync-msg { min-height:20px; font-size:13px; text-align:center; }
+#sync-msg.ok { color:#34c759; }
+#sync-msg.err { color:#f87171; }
+
+</style>
 </head>
 <body>
 
@@ -756,6 +811,7 @@
     </div>
     <button class="tool-btn" id="btn-grid-toggle">⊞ 隔离</button>
     <button class="tool-btn" id="btn-export">💾 导出</button>
+    <button class="tool-btn" id="btn-cloud-sync">☁ 同步<span class="sync-dot"></span></button>
     <button class="tool-btn danger" id="btn-clear-bubbles">🧹 清除所有</button>
   </div>
 </div>
@@ -817,6 +873,35 @@
   <div id="color-picker"></div>
   <input type="text" id="wordInput" aria-label="输入灵感文字" placeholder="这里激发灵感" autocomplete="off">
   <button id="btn-confirm-add" title="添加灵感" aria-label="添加灵感">➕</button>
+</div>
+
+<div id="sync-modal-overlay">
+  <div id="sync-modal">
+    <div class="sync-modal-header">
+      <span class="sync-modal-icon">☁️</span>
+      <h3>云端同步</h3>
+      <button id="sync-close" aria-label="关闭">✕</button>
+    </div>
+    <div id="sync-setup">
+      <p>将你的灵感泡泡数据同步到 GitHub Gist，跨设备访问。</p>
+      <ol class="sync-steps">
+        <li>点击下方链接创建 Token（勾选 <code>gist</code> 权限）</li>
+        <li>粘贴生成的 Token</li>
+        <li>点击「开始同步」</li>
+      </ol>
+      <a href="https://github.com/settings/tokens/new?scopes=gist&description=灵感泡泡同步" target="_blank" class="sync-link">🔑 创建 GitHub Token →</a>
+      <input type="password" id="sync-token-input" placeholder="粘贴 Token（ghp_ 开头）" autocomplete="off">
+      <button id="sync-start-btn" class="sync-primary-btn">开始同步</button>
+    </div>
+    <div id="sync-panel" style="display:none">
+      <div class="sync-status-row"><span class="sync-label">上次同步</span><span id="sync-last-time">—</span></div>
+      <div class="sync-actions">
+        <button id="sync-pull-btn" class="sync-action-btn">⬇ 从云端拉取</button>
+        <button id="sync-push-btn" class="sync-action-btn">⬆ 推送到云端</button>
+      </div>
+      <div id="sync-msg"></div>
+    </div>
+  </div>
 </div>
 
 <script>
@@ -2346,6 +2431,180 @@
       recentlyDeleted = null;
       updateCounter();
       saveToStorage();
+    });
+
+    // ---------- 云端同步（GitHub Gist）----------
+    const GIST_ID = '46a6da276fee57fd01c48d9fd2ec32a7';
+    const btnCloudSync = document.getElementById('btn-cloud-sync');
+    const syncOverlay = document.getElementById('sync-modal-overlay');
+    const syncSetupEl = document.getElementById('sync-setup');
+    const syncPanelEl = document.getElementById('sync-panel');
+    const syncTokenInput = document.getElementById('sync-token-input');
+    const syncStartBtn = document.getElementById('sync-start-btn');
+    const syncPullBtn = document.getElementById('sync-pull-btn');
+    const syncPushBtn = document.getElementById('sync-push-btn');
+    const syncMsg = document.getElementById('sync-msg');
+    const syncLastTime = document.getElementById('sync-last-time');
+
+    function getSyncToken() { try { return localStorage.getItem('inspiration-github-token'); } catch(e) { return null; } }
+    function setSyncToken(t) { try { localStorage.setItem('inspiration-github-token', t); } catch(e) {} }
+
+    function collectSyncData() {
+      return {
+        bubbles: bubbles.map(bubbleToData),
+        settings: { speedFactor, textRatio, sizeRatio },
+        categories: { categories, activeCategory, gridState },
+        savedAt: new Date().toISOString()
+      };
+    }
+
+    async function gistRead() {
+      const token = getSyncToken();
+      const headers = { 'Accept': 'application/vnd.github.v3+json' };
+      if (token) headers['Authorization'] = 'token ' + token;
+      const res = await fetch('https://api.github.com/gists/' + GIST_ID, { headers });
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      const gist = await res.json();
+      const raw = gist.files && gist.files['bubbles.json'] && gist.files['bubbles.json'].content;
+      if (!raw) throw new Error('数据文件不存在');
+      return JSON.parse(raw);
+    }
+
+    async function gistWrite(payload) {
+      const token = getSyncToken();
+      if (!token) throw new Error('未设置 Token');
+      const res = await fetch('https://api.github.com/gists/' + GIST_ID, {
+        method: 'PATCH',
+        headers: { 'Authorization': 'token ' + token, 'Content-Type': 'application/json', 'Accept': 'application/vnd.github.v3+json' },
+        body: JSON.stringify({ files: { 'bubbles.json': { content: JSON.stringify(payload) } } })
+      });
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+    }
+
+    function applyRemote(remote) {
+      if (!remote || typeof remote !== 'object') return false;
+      let applied = false;
+      if (Array.isArray(remote.bubbles) && remote.bubbles.length) {
+        try { localStorage.setItem(STORAGE_KEY, JSON.stringify(remote.bubbles)); applied = true; } catch(e) {}
+      }
+      if (remote.settings && typeof remote.settings === 'object') {
+        try { localStorage.setItem(SETTINGS_KEY, JSON.stringify(remote.settings)); } catch(e) {}
+      }
+      if (remote.categories && typeof remote.categories === 'object' && Object.keys(remote.categories).length) {
+        try { localStorage.setItem(CATEGORY_KEY, JSON.stringify(remote.categories)); } catch(e) {}
+      }
+      if (remote.savedAt) {
+        try { localStorage.setItem('inspiration-last-sync', remote.savedAt); } catch(e) {}
+        updateSyncTime();
+      }
+      return applied;
+    }
+
+    function updateSyncTime() {
+      try {
+        const t = localStorage.getItem('inspiration-last-sync');
+        if (!t) return;
+        const d = new Date(t);
+        syncLastTime.textContent = d.toLocaleString('zh-CN', {month:'numeric', day:'numeric', hour:'2-digit', minute:'2-digit'});
+        btnCloudSync.classList.add('has-sync');
+      } catch(e) {}
+    }
+
+    function setSyncMsg(text, cls) {
+      syncMsg.textContent = text;
+      syncMsg.className = cls || '';
+    }
+
+    function openSyncModal() {
+      syncOverlay.classList.add('open');
+      if (getSyncToken()) {
+        syncSetupEl.style.display = 'none';
+        syncPanelEl.style.display = '';
+        updateSyncTime();
+      } else {
+        syncSetupEl.style.display = '';
+        syncPanelEl.style.display = 'none';
+      }
+      setSyncMsg('');
+    }
+
+    function closeSyncModal() { syncOverlay.classList.remove('open'); }
+
+    btnCloudSync.addEventListener('click', () => { saveToStorage(); openSyncModal(); });
+    document.getElementById('sync-close').addEventListener('click', closeSyncModal);
+    syncOverlay.addEventListener('click', e => { if (e.target === syncOverlay) closeSyncModal(); });
+
+    syncStartBtn.addEventListener('click', async () => {
+      const token = syncTokenInput.value.trim();
+      if (!token) { setSyncMsg('请先粘贴 Token', 'err'); return; }
+      setSyncToken(token);
+      setSyncMsg('正在验证…');
+      syncStartBtn.disabled = true;
+      try {
+        // Try pull first
+        const remote = await gistRead();
+        const hasRemote = remote && Array.isArray(remote.bubbles) && remote.bubbles.length > 0;
+        const localRaw = (() => { try { return localStorage.getItem(STORAGE_KEY); } catch(e){} })();
+        let localBubbles = [];
+        if (localRaw) { try { localBubbles = JSON.parse(localRaw); } catch(e) {} }
+        const hasLocal = localBubbles.length > 0;
+
+        if (hasRemote && hasLocal) {
+          // Both exist: push local to cloud (local is source of truth on this device)
+          await gistWrite(collectSyncData());
+          setSyncMsg('✓ 已将本地数据推送到云端', 'ok');
+        } else if (hasRemote && !hasLocal) {
+          // Only remote exists: apply it
+          applyRemote(remote);
+          setSyncMsg('✓ 已从云端拉取数据，刷新页面生效', 'ok');
+        } else if (!hasRemote && hasLocal) {
+          // Only local exists: push it
+          await gistWrite(collectSyncData());
+          setSyncMsg('✓ 已将本地数据推送到云端', 'ok');
+        } else {
+          await gistWrite({ bubbles: [], settings: {}, categories: {}, savedAt: new Date().toISOString() });
+          setSyncMsg('✓ 云端已初始化', 'ok');
+        }
+        syncSetupEl.style.display = 'none';
+        syncPanelEl.style.display = '';
+        updateSyncTime();
+      } catch(e) {
+        if (String(e).includes('401')) {
+          setSyncMsg('✗ Token 无效或已过期，请重新输入', 'err');
+          try { localStorage.removeItem('inspiration-github-token'); } catch(err){}
+        } else {
+          setSyncMsg('✗ 连接失败：' + e.message, 'err');
+        }
+      }
+      syncStartBtn.disabled = false;
+    });
+
+    syncPullBtn.addEventListener('click', async () => {
+      setSyncMsg('正在从云端拉取…');
+      syncPullBtn.disabled = true;
+      try {
+        const remote = await gistRead();
+        const changed = applyRemote(remote);
+        if (changed) {
+          setSyncMsg('✓ 数据已更新，刷新页面生效', 'ok');
+        } else {
+          setSyncMsg('✓ 云端无新数据', 'ok');
+        }
+      } catch(e) { setSyncMsg('✗ 拉取失败：' + e.message, 'err'); }
+      syncPullBtn.disabled = false;
+    });
+
+    syncPushBtn.addEventListener('click', async () => {
+      setSyncMsg('正在推送到云端…');
+      syncPushBtn.disabled = true;
+      try {
+        saveToStorage(); saveSettings(); saveCategories();
+        await gistWrite(collectSyncData());
+        try { localStorage.setItem('inspiration-last-sync', new Date().toISOString()); } catch(e) {}
+        updateSyncTime();
+        setSyncMsg('✓ 已推送到云端', 'ok');
+      } catch(e) { setSyncMsg('✗ 推送失败：' + e.message, 'err'); }
+      syncPushBtn.disabled = false;
     });
 
     initBubbles();
