@@ -1,0 +1,1918 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>时间线分析</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg: #0b1426;
+      --panel: #101d34;
+      --panel-2: #13243f;
+      --border: rgba(255,255,255,0.10);
+      --text: #e6edf7;
+      --text-dim: #8a97ad;
+      --accent: #3b82f6;
+      --bull: #16a34a;
+      --bear: #ef4444;
+      --neutral: #94a3b8;
+      --lane-h: 130px;
+      --px-per-day: 42;
+    }
+    html, body { height: 100%; }
+    body {
+      background: radial-gradient(circle at 25% 15%, #14213d 0%, #0b1426 55%, #060b16 100%);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      height: 100vh;
+      display: flex;
+      overflow: hidden;
+    }
+
+    /* ---------- 侧边栏 ---------- */
+    #sidebar {
+      width: 270px;
+      min-width: 270px;
+      background: rgba(16, 29, 52, 0.75);
+      border-right: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      backdrop-filter: blur(6px);
+      transition: width 0.2s ease, min-width 0.2s ease;
+      overflow: hidden;
+      position: relative;
+    }
+    #sidebar.collapsed {
+      width: 44px;
+      min-width: 44px;
+    }
+    #sidebar.collapsed #sidebar-header h1,
+    #sidebar.collapsed #timeline-list,
+    #sidebar.collapsed #sidebar-footer,
+    #sidebar.collapsed #btn-new-timeline {
+      display: none;
+    }
+    #sidebar.collapsed #sidebar-header {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 16px 0 10px;
+    }
+    #btn-sidebar-toggle {
+      width: 26px; height: 26px;
+      display: flex; align-items: center; justify-content: center;
+      border-radius: 7px;
+      color: #cfe0ff;
+      cursor: pointer;
+      font-size: 13px;
+      background: rgba(59, 130, 246, 0.18);
+      border: 1px solid rgba(59, 130, 246, 0.35);
+      flex-shrink: 0;
+      z-index: 2;
+    }
+    #btn-sidebar-toggle:hover { background: rgba(59, 130, 246, 0.32); }
+    #sidebar-header-top {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      margin-bottom: 10px;
+    }
+    #sidebar.collapsed #sidebar-header-top { margin-bottom: 0; }
+    #sidebar-header {
+      padding: 16px 14px 10px;
+      border-bottom: 1px solid var(--border);
+    }
+    #sidebar-header h1 {
+      font-size: 15px;
+      font-weight: 700;
+      letter-spacing: 0.3px;
+      overflow: hidden;
+      white-space: nowrap;
+    }
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      background: rgba(59, 130, 246, 0.18);
+      border: 1px solid rgba(59, 130, 246, 0.4);
+      color: #cfe0ff;
+      padding: 8px 12px;
+      border-radius: 10px;
+      font-size: 13px;
+      cursor: pointer;
+      transition: background 0.15s, transform 0.1s;
+      white-space: nowrap;
+    }
+    .btn:hover { background: rgba(59, 130, 246, 0.32); }
+    .btn:active { transform: scale(0.97); }
+    .btn.full { width: 100%; }
+    .btn.ghost {
+      background: rgba(255,255,255,0.05);
+      border-color: var(--border);
+      color: var(--text-dim);
+    }
+    .btn.ghost:hover { background: rgba(255,255,255,0.1); color: var(--text); }
+    .btn.ghost.active { background: rgba(59, 130, 246, 0.28); border-color: var(--accent); color: #cfe0ff; }
+    .btn.small { padding: 5px 9px; font-size: 12px; border-radius: 8px; }
+
+    #timeline-list {
+      flex: 1;
+      overflow-y: auto;
+      padding: 8px;
+    }
+    .tl-item {
+      padding: 9px 10px;
+      border-radius: 10px;
+      margin-bottom: 5px;
+      cursor: pointer;
+      border: 1px solid transparent;
+      transition: background 0.15s;
+      position: relative;
+      display: flex;
+      align-items: flex-start;
+      gap: 8px;
+    }
+    .tl-item:hover { background: rgba(255,255,255,0.05); }
+    .tl-item.active {
+      background: rgba(59, 130, 246, 0.14);
+      border-color: rgba(59, 130, 246, 0.3);
+    }
+    .tl-check {
+      width: 16px; height: 16px;
+      margin-top: 2px;
+      accent-color: var(--accent);
+      cursor: pointer;
+      flex-shrink: 0;
+    }
+    .tl-body { flex: 1; min-width: 0; }
+    .tl-item-top {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      margin-bottom: 2px;
+    }
+    .tl-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+    .tl-name {
+      font-size: 13.5px;
+      font-weight: 600;
+      flex: 1;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .tl-meta { font-size: 11px; color: var(--text-dim); }
+    .tl-actions {
+      display: none;
+      position: absolute;
+      right: 6px;
+      top: 8px;
+      gap: 4px;
+    }
+    .tl-item:hover .tl-actions { display: flex; }
+    .icon-btn {
+      width: 20px; height: 20px;
+      display: flex; align-items: center; justify-content: center;
+      border-radius: 5px;
+      color: var(--text-dim);
+      cursor: pointer;
+      font-size: 12px;
+      background: rgba(0,0,0,0.3);
+    }
+    .icon-btn:hover { color: var(--text); background: rgba(0,0,0,0.5); }
+
+    #sidebar-footer {
+      padding: 10px;
+      border-top: 1px solid var(--border);
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+    #sidebar-footer .btn { flex: 1; min-width: 64px; }
+    #sidebar-footer .btn#btn-sync-config { flex: 0 0 auto; min-width: 0; padding: 8px 10px; }
+    #import-file { display: none; }
+
+    /* ---------- 主区域 ---------- */
+    #main {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+    #main-header {
+      padding: 14px 24px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+    }
+    #main-header .hint-text {
+      font-size: 12px;
+      color: var(--text-dim);
+    }
+    #zoom-controls {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+    #zoom-controls .btn.small { padding: 4px 10px; }
+
+    #empty-state {
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      color: var(--text-dim);
+      gap: 14px;
+      text-align: center;
+    }
+    #empty-state .hint { font-size: 14px; max-width: 340px; line-height: 1.6; }
+    #empty-state .emoji { font-size: 40px; opacity: 0.7; }
+
+    /* ---------- 画布 / 多轨道时间轴 ---------- */
+    #viewport {
+      flex: 1;
+      position: relative;
+      overflow: hidden;
+      cursor: grab;
+      user-select: none;
+    }
+    #viewport.dragging { cursor: grabbing; }
+
+    #ruler {
+      position: absolute;
+      top: 0;
+      left: 0;
+      height: 34px;
+      background: rgba(9, 16, 30, 0.9);
+      border-bottom: 1px solid var(--border);
+      z-index: 5;
+    }
+    .ruler-tick {
+      position: absolute;
+      top: 0;
+      height: 100%;
+      border-left: 1px solid rgba(255,255,255,0.08);
+      padding-left: 6px;
+      font-size: 11px;
+      color: var(--text-dim);
+      display: flex;
+      align-items: center;
+      white-space: nowrap;
+    }
+    .ruler-tick.month {
+      color: #c7d2e6;
+      font-weight: 600;
+      border-left-color: rgba(255,255,255,0.18);
+    }
+
+    #canvas {
+      position: absolute;
+      top: 34px;
+      left: 0;
+      will-change: transform;
+    }
+
+    /* 轨道标签固定在视口左侧，不随画布水平平移，只随垂直平移同步 */
+    #lane-labels {
+      position: absolute;
+      top: 34px;
+      left: 0;
+      z-index: 6;
+      pointer-events: none;
+      will-change: transform;
+    }
+    .lane-label {
+      position: absolute;
+      left: 10px;
+      top: 8px;
+      max-width: 170px;
+      font-size: 12px;
+      font-weight: 700;
+      color: #c7d2e6;
+      background: rgba(9, 16, 30, 0.85);
+      padding: 3px 9px;
+      border-radius: 6px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .lane {
+      position: relative;
+      height: var(--lane-h);
+      border-bottom: 1px dashed rgba(255,255,255,0.08);
+    }
+    .lane-baseline {
+      position: absolute;
+      left: 0;
+      right: 0;
+      top: 50%;
+      height: 0;
+      border-top: 2px dashed rgba(255,255,255,0.22);
+    }
+
+    .node-dot {
+      position: absolute;
+      top: 50%;
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      transform: translate(-50%, -50%);
+      border: 2px solid var(--bg);
+      z-index: 3;
+    }
+    .node-stem {
+      position: absolute;
+      width: 1px;
+      background: rgba(255,255,255,0.2);
+      transform: translateX(-50%);
+    }
+
+    .node-card {
+      position: absolute;
+      transform: translate(-50%, -50%);
+      min-width: 96px;
+      max-width: 190px;
+      background: #f8f9fb;
+      color: #1f2329;
+      border-radius: 8px;
+      padding: 5px 9px 5px 8px;
+      box-shadow: 0 4px 14px rgba(0,0,0,0.35);
+      z-index: 4;
+      cursor: grab;
+      border-left: 3px solid #94a3b8;
+      transition: box-shadow 0.15s;
+    }
+    .node-card:active { cursor: grabbing; }
+    .node-card.dragging { opacity: 0.85; box-shadow: 0 10px 24px rgba(0,0,0,0.5); z-index: 20; }
+    .node-card.expanded { max-width: 260px; z-index: 10; }
+    .node-card.has-link:hover { box-shadow: 0 4px 14px rgba(0,0,0,0.35), 0 0 0 2px rgba(59,130,246,0.5); }
+    .node-link-badge {
+      position: absolute;
+      top: -6px;
+      right: -6px;
+      width: 16px; height: 16px;
+      border-radius: 50%;
+      background: var(--accent);
+      color: #fff;
+      font-size: 9px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      pointer-events: none;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.4);
+    }
+    .node-link-line {
+      margin-top: 6px;
+      font-size: 10.5px;
+      color: var(--accent);
+      text-decoration: none;
+      display: none;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .node-card.expanded .node-link-line { display: block; }
+    .node-link-line:hover { text-decoration: underline; }
+
+    .node-card-row {
+      display: flex;
+      align-items: baseline;
+      gap: 6px;
+    }
+    .node-date {
+      font-size: 10.5px;
+      font-weight: 700;
+      color: #6b7280;
+      white-space: nowrap;
+    }
+    .node-title {
+      font-size: 12.5px;
+      font-weight: 700;
+      color: #1f2329;
+      line-height: 1.3;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .node-card.expanded .node-title {
+      white-space: normal;
+    }
+    .node-detail {
+      font-size: 11.5px;
+      color: #4b5563;
+      line-height: 1.45;
+      margin-top: 4px;
+      display: none;
+    }
+    .node-card.expanded .node-detail { display: block; }
+
+    .node-toolbar {
+      display: none;
+      gap: 4px;
+      margin-top: 6px;
+    }
+    .node-card.expanded .node-toolbar { display: flex; }
+    .node-toolbar button {
+      flex: 1;
+      font-size: 10.5px;
+      padding: 3px 0;
+      border-radius: 5px;
+      border: 1px solid rgba(0,0,0,0.08);
+      background: rgba(0,0,0,0.04);
+      color: #4b5563;
+      cursor: pointer;
+    }
+    .node-toolbar button:hover { background: rgba(0,0,0,0.09); }
+    .node-toolbar button.del:hover { background: rgba(239, 68, 68, 0.15); color: #b91c1c; }
+
+    /* ---------- Modal ---------- */
+    @keyframes modal-in {
+      from { opacity: 0; transform: scale(0.94) translateY(6px); }
+      to { opacity: 1; transform: scale(1) translateY(0); }
+    }
+    #modal-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(4, 8, 18, 0.6);
+      backdrop-filter: blur(2px);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 50;
+    }
+    #modal-overlay.show { display: flex; }
+    #sync-modal-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(4, 8, 18, 0.6);
+      backdrop-filter: blur(2px);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 51;
+    }
+    #sync-modal-overlay.show { display: flex; }
+    #sync-modal, #modal {
+      background: linear-gradient(165deg, #182a4d 0%, #101d38 55%, #0c1730 100%);
+      border: 1px solid rgba(59, 130, 246, 0.28);
+      border-radius: 16px;
+      max-width: 90vw;
+      padding: 24px 24px 20px;
+      box-shadow: 0 24px 60px rgba(0,0,0,0.55), inset 0 1px 0 rgba(255,255,255,0.06);
+      animation: modal-in 0.18s ease-out;
+    }
+    #modal { width: 440px; }
+    #sync-modal h2, #modal h2 {
+      font-size: 16.5px;
+      font-weight: 700;
+      margin-bottom: 16px;
+      padding-bottom: 14px;
+      border-bottom: 1px solid rgba(255,255,255,0.08);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .field { margin-bottom: 17px; }
+    .field label {
+      display: block;
+      font-size: 12px;
+      font-weight: 600;
+      color: #a8b6cc;
+      margin-bottom: 7px;
+      letter-spacing: 0.2px;
+    }
+    .field input[type="text"],
+    .field input[type="date"],
+    .field input[type="url"],
+    .field input[type="password"],
+    .field textarea,
+    .field select {
+      width: 100%;
+      background: rgba(255,255,255,0.055);
+      border: 1px solid rgba(255,255,255,0.12);
+      color: var(--text);
+      padding: 10px 12px;
+      border-radius: 9px;
+      font-size: 13px;
+      outline: none;
+      font-family: inherit;
+      transition: border-color 0.15s, box-shadow 0.15s;
+    }
+    .field textarea { resize: vertical; min-height: 70px; }
+    .field input:focus, .field textarea:focus, .field select:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px rgba(59,130,246,0.18);
+    }
+
+    .sentiment-group { display: flex; gap: 8px; }
+    .sentiment-btn {
+      flex: 1;
+      padding: 9px 0;
+      text-align: center;
+      border-radius: 9px;
+      border: 1px solid rgba(255,255,255,0.12);
+      background: rgba(255,255,255,0.04);
+      color: var(--text-dim);
+      font-size: 12.5px;
+      cursor: pointer;
+      transition: background 0.15s, border-color 0.15s;
+    }
+    .sentiment-btn:hover { background: rgba(255,255,255,0.08); }
+    .sentiment-btn[data-v="bullish"].active { background: rgba(22,163,74,0.22); border-color: var(--bull); color: #86efac; }
+    .sentiment-btn[data-v="bearish"].active { background: rgba(239,68,68,0.22); border-color: var(--bear); color: #fca5a5; }
+    .sentiment-btn[data-v="neutral"].active { background: rgba(148,163,184,0.22); border-color: var(--neutral); color: #e2e8f0; }
+
+    .color-field-row {
+      display: flex;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 9px;
+      padding: 10px 12px;
+      background: rgba(255,255,255,0.035);
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 10px;
+    }
+    .color-swatch {
+      width: 24px; height: 24px;
+      border-radius: 50%;
+      cursor: pointer;
+      border: 2px solid transparent;
+      box-shadow: 0 0 0 1px rgba(255,255,255,0.15) inset;
+      transition: transform 0.12s;
+      flex-shrink: 0;
+    }
+    .color-swatch:hover { transform: scale(1.15); }
+    .color-swatch.active { border-color: #fff; box-shadow: 0 0 0 2px rgba(255,255,255,0.85), 0 2px 6px rgba(0,0,0,0.4); }
+    .color-swatch-custom-wrap {
+      width: 24px; height: 24px;
+      border-radius: 50%;
+      overflow: hidden;
+      border: 2px solid rgba(255,255,255,0.25);
+      flex-shrink: 0;
+      display: flex;
+    }
+    .color-swatch-custom-wrap input[type="color"] {
+      width: 30px; height: 30px;
+      margin: -3px;
+      border: none;
+      cursor: pointer;
+      background: none;
+      padding: 0;
+    }
+    .color-swatch-custom-wrap.active { border-color: #fff; box-shadow: 0 0 0 2px rgba(255,255,255,0.85), 0 2px 6px rgba(0,0,0,0.4); }
+
+    #modal-actions, #sync-modal-actions {
+      display: flex;
+      justify-content: flex-end;
+      gap: 10px;
+      margin-top: 20px;
+      padding-top: 16px;
+      border-top: 1px solid rgba(255,255,255,0.08);
+    }
+    #modal-actions .btn:not(.ghost), #sync-modal-actions .btn:not(.ghost) {
+      background: linear-gradient(135deg, #4f8cff, #3b82f6);
+      border-color: #5b93ff;
+      color: #fff;
+      box-shadow: 0 6px 16px rgba(59,130,246,0.35);
+      font-weight: 600;
+    }
+    #modal-actions .btn:not(.ghost):hover, #sync-modal-actions .btn:not(.ghost):hover {
+      background: linear-gradient(135deg, #5b96ff, #4a8bfa);
+    }
+
+    /* ---------- Toast ---------- */
+    #toast-stack {
+      position: fixed;
+      bottom: 22px;
+      left: 50%;
+      transform: translateX(-50%);
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      z-index: 100;
+      pointer-events: none;
+    }
+    .toast {
+      padding: 10px 18px;
+      border-radius: 10px;
+      font-size: 13px;
+      background: #16233d;
+      border: 1px solid var(--border);
+      color: var(--text);
+      box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+      opacity: 0;
+      transform: translateY(8px);
+      transition: opacity 0.2s, transform 0.2s;
+      white-space: nowrap;
+    }
+    .toast.show { opacity: 1; transform: translateY(0); }
+    .toast.success { border-color: rgba(22,163,74,0.5); color: #86efac; }
+    .toast.error { border-color: rgba(239,68,68,0.5); color: #fca5a5; }
+
+    /* ---------- Sync button spin ---------- */
+    .btn.syncing { opacity: 0.7; pointer-events: none; }
+    .spin-icon { display: inline-block; animation: spin 0.9s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    #sync-hint { font-size: 11.5px; color: var(--text-dim); line-height: 1.5; margin-top: -4px; margin-bottom: 14px; }
+
+    /* scrollbars */
+    ::-webkit-scrollbar { width: 8px; height: 8px; }
+    ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.15); border-radius: 4px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+  </style>
+</head>
+<body>
+
+<div id="sidebar">
+  <div id="sidebar-header">
+    <div id="sidebar-header-top">
+      <h1>📈 交易时间线分析</h1>
+      <div id="btn-sidebar-toggle" title="收起/展开面板">«</div>
+    </div>
+    <button class="btn full" id="btn-new-timeline">+ 新建时间线</button>
+  </div>
+  <div id="timeline-list"></div>
+  <div id="sidebar-footer">
+    <button class="btn ghost" id="btn-export">导出</button>
+    <button class="btn ghost" id="btn-import-trigger">导入</button>
+    <input type="file" id="import-file" accept="application/json">
+    <button class="btn ghost" id="btn-sync" title="与 GitHub Gist 同步">☁ 同步</button>
+    <button class="btn ghost small" id="btn-sync-config" title="同步设置">⚙</button>
+  </div>
+</div>
+
+<div id="main">
+  <div id="main-header">
+    <div class="hint-text">勾选左侧时间线可叠加显示在同一时间轴上；拖动画布可左右平移，拖动卡片可调整上下位置</div>
+    <div id="zoom-controls">
+      <button class="btn small ghost" id="btn-zoom-out">－</button>
+      <button class="btn small ghost" id="btn-zoom-reset">适应窗口</button>
+      <button class="btn small ghost" id="btn-zoom-in">＋</button>
+      <button class="btn small ghost" id="btn-toggle-ruler" style="margin-left:8px;" title="隐藏后节点按均匀间距排列">🕐 时间刻度</button>
+      <button class="btn small" id="btn-add-node" style="margin-left:8px;">+ 添加节点</button>
+    </div>
+  </div>
+
+  <div id="viewport">
+    <div id="empty-state">
+      <div class="emoji">🗓️</div>
+      <div class="hint">还没有任何时间线，或没有勾选要显示的时间线。<br>新建一条时间线并勾选它，开始梳理某个事件 / 人物 / 公司的发展脉络。</div>
+      <button class="btn" id="btn-new-timeline-2">+ 新建时间线</button>
+    </div>
+    <div id="ruler"></div>
+    <div id="canvas"></div>
+    <div id="lane-labels"></div>
+  </div>
+</div>
+
+<div id="modal-overlay">
+  <div id="modal">
+    <h2 id="modal-title">添加节点</h2>
+    <div class="field" id="field-timeline-wrap">
+      <label>所属时间线</label>
+      <select id="field-timeline"></select>
+    </div>
+    <div class="field">
+      <label>日期</label>
+      <input type="date" id="field-date">
+    </div>
+    <div class="field">
+      <label>标题</label>
+      <input type="text" id="field-title" placeholder="例如：Q1 财报超预期">
+    </div>
+    <div class="field">
+      <label>详情（可选）</label>
+      <textarea id="field-detail" placeholder="补充说明、数据、影响分析..."></textarea>
+    </div>
+    <div class="field">
+      <label>链接（可选，⌘/Ctrl+点击卡片跳转）</label>
+      <input type="url" id="field-link" placeholder="https://...">
+    </div>
+    <div class="field">
+      <label>态度标记</label>
+      <div class="sentiment-group">
+        <div class="sentiment-btn" data-v="bullish">📈 看多</div>
+        <div class="sentiment-btn" data-v="neutral">➖ 中性</div>
+        <div class="sentiment-btn" data-v="bearish">📉 看空</div>
+      </div>
+    </div>
+    <div class="field">
+      <label>节点颜色</label>
+      <div class="color-field-row" id="color-swatch-row">
+        <div class="color-swatch-custom-wrap" id="color-custom-wrap">
+          <input type="color" id="field-color-custom">
+        </div>
+      </div>
+    </div>
+    <div id="modal-actions">
+      <button class="btn ghost" id="btn-modal-cancel">取消</button>
+      <button class="btn" id="btn-modal-save">保存</button>
+    </div>
+  </div>
+</div>
+
+<div id="sync-modal-overlay">
+  <div id="sync-modal" style="width:380px;">
+    <h2>☁ 同步设置</h2>
+    <div id="sync-hint">
+      将数据同步到一个私密 GitHub Gist，可在多台设备间共享。需要一个具有 <b>gist</b> 权限的 Personal Access Token（在 GitHub → Settings → Developer settings → Personal access tokens 创建）。Token 仅保存在本地浏览器，不会随导出文件或 Gist 内容泄露。
+    </div>
+    <div class="field">
+      <label>Personal Access Token</label>
+      <input type="password" id="field-gh-token" placeholder="ghp_...">
+    </div>
+    <div class="field">
+      <label>Gist ID（留空 = 首次同步时自动创建）</label>
+      <input type="text" id="field-gist-id" placeholder="例如 a1b2c3d4e5f6...">
+    </div>
+    <div id="sync-modal-actions">
+      <button class="btn ghost" id="btn-sync-clear">清除配置</button>
+      <button class="btn ghost" id="btn-sync-config-cancel">取消</button>
+      <button class="btn" id="btn-sync-config-save">保存并同步</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast-stack"></div>
+
+<script>
+  (function () {
+    'use strict';
+
+    var STORAGE_KEY = 'trading-timeline-data-v2';
+    var TOKEN_KEY = 'trading-timeline-gh-token';
+    var CATEGORY_COLORS = { '公司': '#3b82f6', '人物': '#f59e0b', '事件': '#ef4444', '宏观': '#10b981' };
+    var SENTIMENT_LABEL = { bullish: '📈 看多', bearish: '📉 看空', neutral: '➖ 中性' };
+    var SENTIMENT_COLOR = { bullish: '#16a34a', bearish: '#ef4444', neutral: '#94a3b8' };
+    var NODE_COLOR_PALETTE = [
+      '#60a5fa', '#34d399', '#fbbf24', '#f87171', '#a78bfa',
+      '#22d3ee', '#fb923c', '#2dd4bf', '#f472b6', '#a3e635',
+      '#818cf8', '#facc15'
+    ];
+    var DAY_MS = 24 * 60 * 60 * 1000;
+    var LANE_H = 130;
+    var MIN_PX_PER_DAY = 6;
+    var MAX_PX_PER_DAY = 160;
+    var EVEN_SPACING_PX = 150; // 均匀铺开模式下的固定节点间距，与 pxPerDay 无关
+    var EVEN_SPACING_PADDING = 60;
+    var GH_API = 'https://api.github.com';
+    var GIST_FILENAME = 'trading-timeline-data.json';
+
+    var state = null;
+    var pxPerDay = 42;
+    var panX = 40, panY = 0;
+
+    var modalMode = null; // 'add' | 'edit'
+    var modalContext = null; // { timelineId, nodeId? }
+    var modalSentiment = 'neutral';
+    var modalColor = null;
+
+    var drag = null; // canvas pan drag state
+    var cardDrag = null; // card vertical-offset drag state
+    var syncing = false;
+
+    function uuid() {
+      return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function (c) {
+        var r = Math.random() * 16 | 0;
+        var v = c === 'x' ? r : (r & 0x3 | 0x8);
+        return v.toString(16);
+      });
+    }
+
+    function randomNodeColor() {
+      return NODE_COLOR_PALETTE[Math.floor(Math.random() * NODE_COLOR_PALETTE.length)];
+    }
+
+    function hexToRgb(hex) {
+      var m = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+      if (!m) return { r: 148, g: 163, b: 184 };
+      return { r: parseInt(m[1], 16), g: parseInt(m[2], 16), b: parseInt(m[3], 16) };
+    }
+
+    function rgbToHsl(r, g, b) {
+      r /= 255; g /= 255; b /= 255;
+      var max = Math.max(r, g, b), min = Math.min(r, g, b);
+      var h, s, l = (max + min) / 2;
+      var d = max - min;
+      if (d === 0) { h = 0; s = 0; }
+      else {
+        s = d / (1 - Math.abs(2 * l - 1));
+        switch (max) {
+          case r: h = 60 * (((g - b) / d) % 6); break;
+          case g: h = 60 * ((b - r) / d + 2); break;
+          default: h = 60 * ((r - g) / d + 4);
+        }
+      }
+      if (h < 0) h += 360;
+      return { h: h, s: s, l: l };
+    }
+
+    function hslToRgb(h, s, l) {
+      var c = (1 - Math.abs(2 * l - 1)) * s;
+      var x = c * (1 - Math.abs((h / 60) % 2 - 1));
+      var m = l - c / 2;
+      var r, g, b;
+      if (h < 60) { r = c; g = x; b = 0; }
+      else if (h < 120) { r = x; g = c; b = 0; }
+      else if (h < 180) { r = 0; g = c; b = x; }
+      else if (h < 240) { r = 0; g = x; b = c; }
+      else if (h < 300) { r = x; g = 0; b = c; }
+      else { r = c; g = 0; b = x; }
+      return {
+        r: Math.round((r + m) * 255),
+        g: Math.round((g + m) * 255),
+        b: Math.round((b + m) * 255)
+      };
+    }
+
+    function relativeLuminance(rgb) {
+      return 0.299 * rgb.r + 0.587 * rgb.g + 0.114 * rgb.b;
+    }
+
+    function colorToCardBg(hex) {
+      var rgb = hexToRgb(hex);
+      var hsl = rgbToHsl(rgb.r, rgb.g, rgb.b);
+      var lightness = 0.82;
+      var bg = hslToRgb(hsl.h, hsl.s * 0.75, lightness);
+      while (relativeLuminance(bg) < 170 && lightness < 0.95) {
+        lightness += 0.03;
+        bg = hslToRgb(hsl.h, hsl.s * 0.75, lightness);
+      }
+      return 'rgb(' + bg.r + ',' + bg.g + ',' + bg.b + ')';
+    }
+
+    function loadState() {
+      try {
+        var raw = localStorage.getItem(STORAGE_KEY);
+        if (raw) return normalizeState(JSON.parse(raw));
+      } catch (e) { console.warn('读取本地数据失败', e); }
+      return normalizeState({ timelines: [], visibleIds: [], activeTimelineId: null });
+    }
+
+    function normalizeState(data) {
+      if (!Array.isArray(data.timelines)) data.timelines = [];
+      if (!Array.isArray(data.visibleIds)) data.visibleIds = [];
+      if (!data.syncMeta) data.syncMeta = { gistId: null, lastSyncAt: 0 };
+      if (!data.uiPrefs) data.uiPrefs = {};
+      if (typeof data.uiPrefs.showRuler !== 'boolean') data.uiPrefs.showRuler = true;
+      if (typeof data.uiPrefs.sidebarCollapsed !== 'boolean') data.uiPrefs.sidebarCollapsed = false;
+      return data;
+    }
+
+    function saveState() {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+    }
+
+    function getTimeline(id) {
+      return state.timelines.find(function (t) { return t.id === id; }) || null;
+    }
+
+    function getVisibleTimelines() {
+      return state.timelines.filter(function (t) { return state.visibleIds.indexOf(t.id) !== -1; });
+    }
+
+    function sortNodes(tl) {
+      tl.nodes.sort(function (a, b) { return a.date < b.date ? -1 : a.date > b.date ? 1 : 0; });
+    }
+
+    function fmtDate(d) {
+      var parts = d.split('-');
+      return parts[0] + '.' + parts[1] + '.' + parts[2];
+    }
+
+    function fmtDateShort(d) {
+      var parts = d.split('-');
+      return parts[1] + '/' + parts[2];
+    }
+
+    function toLocalDateStr(d) {
+      var y = d.getFullYear();
+      var m = String(d.getMonth() + 1).padStart(2, '0');
+      var day = String(d.getDate()).padStart(2, '0');
+      return y + '-' + m + '-' + day;
+    }
+
+    function addDays(dateStr, delta) {
+      var d = new Date(dateStr + 'T00:00:00');
+      d.setDate(d.getDate() + delta);
+      return toLocalDateStr(d);
+    }
+
+    function todayStr() {
+      return toLocalDateStr(new Date());
+    }
+
+    function dateToDayIndex(dateStr) {
+      return Math.round(new Date(dateStr + 'T00:00:00').getTime() / DAY_MS);
+    }
+
+    // ---------- Sidebar rendering ----------
+    function renderSidebar() {
+      var list = document.getElementById('timeline-list');
+      list.innerHTML = '';
+      state.timelines.forEach(function (tl) {
+        var checked = state.visibleIds.indexOf(tl.id) !== -1;
+
+        var item = document.createElement('div');
+        item.className = 'tl-item' + (checked ? ' active' : '');
+        item.dataset.id = tl.id;
+
+        var checkbox = document.createElement('input');
+        checkbox.type = 'checkbox';
+        checkbox.className = 'tl-check';
+        checkbox.checked = checked;
+        checkbox.addEventListener('change', function () {
+          toggleVisible(tl.id, checkbox.checked);
+        });
+        item.appendChild(checkbox);
+
+        var body = document.createElement('div');
+        body.className = 'tl-body';
+
+        var top = document.createElement('div');
+        top.className = 'tl-item-top';
+        var dot = document.createElement('div');
+        dot.className = 'tl-dot';
+        dot.style.background = CATEGORY_COLORS[tl.category] || '#94a3b8';
+        var name = document.createElement('div');
+        name.className = 'tl-name';
+        name.textContent = tl.name;
+        top.appendChild(dot);
+        top.appendChild(name);
+
+        var meta = document.createElement('div');
+        meta.className = 'tl-meta';
+        meta.textContent = tl.category + ' · ' + tl.nodes.length + ' 个节点';
+
+        body.appendChild(top);
+        body.appendChild(meta);
+        item.appendChild(body);
+
+        var actions = document.createElement('div');
+        actions.className = 'tl-actions';
+        var renameBtn = document.createElement('div');
+        renameBtn.className = 'icon-btn';
+        renameBtn.textContent = '✎';
+        renameBtn.title = '重命名';
+        renameBtn.addEventListener('click', function (e) {
+          e.stopPropagation();
+          renameTimeline(tl.id);
+        });
+        var delBtn = document.createElement('div');
+        delBtn.className = 'icon-btn';
+        delBtn.textContent = '✕';
+        delBtn.title = '删除';
+        delBtn.addEventListener('click', function (e) {
+          e.stopPropagation();
+          deleteTimeline(tl.id);
+        });
+        actions.appendChild(renameBtn);
+        actions.appendChild(delBtn);
+        item.appendChild(actions);
+
+        item.addEventListener('click', function (e) {
+          if (e.target === checkbox) return;
+          checkbox.checked = !checkbox.checked;
+          toggleVisible(tl.id, checkbox.checked);
+        });
+
+        list.appendChild(item);
+      });
+    }
+
+    function toggleVisible(id, on) {
+      var idx = state.visibleIds.indexOf(id);
+      if (on && idx === -1) state.visibleIds.push(id);
+      if (!on && idx !== -1) state.visibleIds.splice(idx, 1);
+      saveState();
+      renderAll();
+    }
+
+    function renameTimeline(id) {
+      var tl = getTimeline(id);
+      if (!tl) return;
+      var name = prompt('重命名时间线', tl.name);
+      if (name && name.trim()) {
+        tl.name = name.trim();
+        saveState();
+        renderAll();
+      }
+    }
+
+    function deleteTimeline(id) {
+      var tl = getTimeline(id);
+      if (!tl) return;
+      if (!confirm('确定删除时间线「' + tl.name + '」？此操作不可撤销。')) return;
+      state.timelines = state.timelines.filter(function (t) { return t.id !== id; });
+      state.visibleIds = state.visibleIds.filter(function (vid) { return vid !== id; });
+      saveState();
+      renderAll();
+    }
+
+    // ---------- Main canvas rendering ----------
+    function isRulerVisible() {
+      return !!(state.uiPrefs && state.uiPrefs.showRuler);
+    }
+
+    function evenSpacingPx() {
+      return EVEN_SPACING_PX;
+    }
+
+    function computeNodeX(tl, node, minIdx) {
+      if (isRulerVisible()) {
+        return (dateToDayIndex(node.date) - minIdx) * pxPerDay;
+      }
+      var idx = tl.nodes.indexOf(node);
+      return EVEN_SPACING_PADDING + idx * evenSpacingPx();
+    }
+
+    function renderMain() {
+      var visible = getVisibleTimelines();
+      var emptyState = document.getElementById('empty-state');
+      var viewport = document.getElementById('viewport');
+      var ruler = document.getElementById('ruler');
+      var canvas = document.getElementById('canvas');
+      var laneLabels = document.getElementById('lane-labels');
+
+      populateTimelineSelect();
+
+      if (!visible.length) {
+        emptyState.style.display = 'flex';
+        ruler.style.display = 'none';
+        canvas.style.display = 'none';
+        laneLabels.style.display = 'none';
+        return;
+      }
+
+      emptyState.style.display = 'none';
+      canvas.style.display = 'block';
+      laneLabels.style.display = 'block';
+
+      var rulerVisible = isRulerVisible();
+      var minIdx = 0, maxIdx = 0, totalWidth;
+
+      if (rulerVisible) {
+        ruler.style.display = 'block';
+        var allNodes = [];
+        visible.forEach(function (tl) {
+          tl.nodes.forEach(function (n) { allNodes.push(n.date); });
+        });
+        var todayIdx = dateToDayIndex(todayStr());
+        minIdx = allNodes.length ? Math.min.apply(null, allNodes.map(dateToDayIndex)) : todayIdx;
+        maxIdx = allNodes.length ? Math.max.apply(null, allNodes.map(dateToDayIndex)) : todayIdx;
+        minIdx -= 3; maxIdx += 3;
+        totalWidth = Math.max((maxIdx - minIdx) * pxPerDay, viewport.clientWidth);
+      } else {
+        ruler.style.display = 'none';
+        var maxNodeCount = visible.reduce(function (m, tl) { return Math.max(m, tl.nodes.length); }, 0);
+        totalWidth = Math.max(EVEN_SPACING_PADDING * 2 + Math.max(maxNodeCount - 1, 0) * evenSpacingPx(), viewport.clientWidth);
+      }
+
+      canvas.style.width = totalWidth + 'px';
+      canvas.style.height = (visible.length * LANE_H) + 'px';
+      canvas.dataset.minIdx = minIdx;
+
+      if (rulerVisible) renderRuler(ruler, minIdx, maxIdx, totalWidth);
+      renderLanes(canvas, visible, minIdx);
+      renderLaneLabels(visible);
+      applyPan();
+    }
+
+    function renderRuler(ruler, minIdx, maxIdx, totalWidth) {
+      ruler.innerHTML = '';
+      ruler.style.width = totalWidth + 'px';
+      var cursor = new Date(minIdx * DAY_MS);
+      cursor.setDate(1); // snap to month start for clean ticks
+      var guard = 0;
+      while (true) {
+        var idx = Math.round(cursor.getTime() / DAY_MS);
+        if (idx > maxIdx || guard++ > 400) break;
+        if (idx >= minIdx) {
+          var tick = document.createElement('div');
+          tick.className = 'ruler-tick month';
+          tick.style.left = ((idx - minIdx) * pxPerDay) + 'px';
+          tick.textContent = (cursor.getMonth() + 1) + '月';
+          ruler.appendChild(tick);
+        }
+        cursor.setMonth(cursor.getMonth() + 1);
+      }
+    }
+
+    function renderLaneLabels(visible) {
+      var container = document.getElementById('lane-labels');
+      container.innerHTML = '';
+      visible.forEach(function (tl, laneIdx) {
+        var label = document.createElement('div');
+        label.className = 'lane-label';
+        label.style.top = (laneIdx * LANE_H + 8) + 'px';
+        label.style.color = CATEGORY_COLORS[tl.category] || '#c7d2e6';
+        label.textContent = tl.name;
+        container.appendChild(label);
+      });
+    }
+
+    function renderLanes(canvas, visible, minIdx) {
+      canvas.innerHTML = '';
+      visible.forEach(function (tl, laneIdx) {
+        var lane = document.createElement('div');
+        lane.className = 'lane';
+        lane.style.top = (laneIdx * LANE_H) + 'px';
+        lane.style.position = 'absolute';
+        lane.style.left = '0';
+        lane.style.right = '0';
+        lane.style.width = canvas.style.width;
+
+        var baseline = document.createElement('div');
+        baseline.className = 'lane-baseline';
+        lane.appendChild(baseline);
+
+        tl.nodes.forEach(function (node) {
+          var x = computeNodeX(tl, node, minIdx);
+          var vOffset = typeof node.vOffset === 'number' ? node.vOffset : (defaultOffsetFor(tl, node) );
+
+          var dot = document.createElement('div');
+          dot.className = 'node-dot';
+          dot.style.left = x + 'px';
+          dot.style.background = node.color || SENTIMENT_COLOR[node.sentiment] || '#94a3b8';
+          lane.appendChild(dot);
+
+          var stemTop, stemHeight;
+          if (vOffset < 0) { stemTop = (LANE_H / 2 + vOffset); stemHeight = -vOffset; }
+          else { stemTop = LANE_H / 2; stemHeight = vOffset; }
+          var stem = document.createElement('div');
+          stem.className = 'node-stem';
+          stem.style.left = x + 'px';
+          stem.style.top = stemTop + 'px';
+          stem.style.height = Math.max(stemHeight, 0) + 'px';
+          lane.appendChild(stem);
+
+          var card = buildCard(tl, node, x, vOffset);
+          lane.appendChild(card);
+        });
+
+        canvas.appendChild(lane);
+      });
+    }
+
+    function defaultOffsetFor(tl, node) {
+      var idx = tl.nodes.indexOf(node);
+      return idx % 2 === 0 ? -46 : 46;
+    }
+
+    function buildCard(tl, node, x, vOffset) {
+      var card = document.createElement('div');
+      card.className = 'node-card';
+      card.style.left = x + 'px';
+      card.style.top = (LANE_H / 2 + vOffset) + 'px';
+      var accentColor = node.color || SENTIMENT_COLOR[node.sentiment] || '#94a3b8';
+      card.style.borderLeftColor = accentColor;
+      card.style.background = colorToCardBg(accentColor);
+      card.dataset.timelineId = tl.id;
+      card.dataset.nodeId = node.id;
+
+      if (node.link) {
+        card.classList.add('has-link');
+        card.title = '⌘/Ctrl + 点击 打开链接';
+        var linkBadge = document.createElement('div');
+        linkBadge.className = 'node-link-badge';
+        linkBadge.textContent = '🔗';
+        card.appendChild(linkBadge);
+      }
+
+      var row = document.createElement('div');
+      row.className = 'node-card-row';
+      var dateEl = document.createElement('span');
+      dateEl.className = 'node-date';
+      dateEl.textContent = fmtDateShort(node.date);
+      var titleEl = document.createElement('span');
+      titleEl.className = 'node-title';
+      titleEl.textContent = node.title;
+      row.appendChild(dateEl);
+      row.appendChild(titleEl);
+      card.appendChild(row);
+
+      if (node.detail) {
+        var detailEl = document.createElement('div');
+        detailEl.className = 'node-detail';
+        detailEl.textContent = node.detail;
+        card.appendChild(detailEl);
+      }
+
+      if (node.link) {
+        var linkLine = document.createElement('a');
+        linkLine.className = 'node-link-line';
+        linkLine.href = node.link;
+        linkLine.target = '_blank';
+        linkLine.rel = 'noopener';
+        linkLine.textContent = '🔗 ' + node.link;
+        linkLine.addEventListener('click', function (e) { e.stopPropagation(); });
+        card.appendChild(linkLine);
+      }
+
+      var toolbar = document.createElement('div');
+      toolbar.className = 'node-toolbar';
+
+      var beforeBtn = document.createElement('button');
+      beforeBtn.textContent = '← 前插';
+      beforeBtn.addEventListener('click', function (e) { e.stopPropagation(); openInsertModal(tl.id, node.id, 'before'); });
+
+      var editBtn = document.createElement('button');
+      editBtn.textContent = '编辑';
+      editBtn.addEventListener('click', function (e) { e.stopPropagation(); openEditModal(tl.id, node.id); });
+
+      var afterBtn = document.createElement('button');
+      afterBtn.textContent = '后插 →';
+      afterBtn.addEventListener('click', function (e) { e.stopPropagation(); openInsertModal(tl.id, node.id, 'after'); });
+
+      var delBtn = document.createElement('button');
+      delBtn.className = 'del';
+      delBtn.textContent = '删除';
+      delBtn.addEventListener('click', function (e) { e.stopPropagation(); deleteNode(tl.id, node.id); });
+
+      toolbar.appendChild(beforeBtn);
+      toolbar.appendChild(editBtn);
+      toolbar.appendChild(afterBtn);
+      toolbar.appendChild(delBtn);
+      card.appendChild(toolbar);
+
+      card.addEventListener('mousedown', onCardMouseDown);
+      card.addEventListener('click', function (e) {
+        if (card.dataset.justDragged === '1') { card.dataset.justDragged = ''; return; }
+        if ((e.metaKey || e.ctrlKey) && node.link) {
+          window.open(node.link, '_blank', 'noopener');
+          return;
+        }
+        document.querySelectorAll('.node-card.expanded').forEach(function (c) {
+          if (c !== card) c.classList.remove('expanded');
+        });
+        card.classList.toggle('expanded');
+      });
+
+      return card;
+    }
+
+    function renderAll() {
+      renderSidebar();
+      renderMain();
+      syncUiPrefButtons();
+    }
+
+    function syncUiPrefButtons() {
+      var rulerBtn = document.getElementById('btn-toggle-ruler');
+      rulerBtn.classList.toggle('active', !isRulerVisible());
+      rulerBtn.textContent = isRulerVisible() ? '🕐 时间刻度' : '🕐 均匀排列';
+
+      var collapsed = !!(state.uiPrefs && state.uiPrefs.sidebarCollapsed);
+      document.getElementById('sidebar').classList.toggle('collapsed', collapsed);
+      document.getElementById('btn-sidebar-toggle').textContent = collapsed ? '»' : '«';
+    }
+
+    function toggleRuler() {
+      state.uiPrefs.showRuler = !state.uiPrefs.showRuler;
+      saveState();
+      renderMain();
+      syncUiPrefButtons();
+    }
+
+    function toggleSidebar() {
+      state.uiPrefs.sidebarCollapsed = !state.uiPrefs.sidebarCollapsed;
+      saveState();
+      syncUiPrefButtons();
+      setTimeout(function () {
+        renderMain();
+      }, 220); // 等待 #sidebar 宽度 transition 结束后再按新的可用宽度重排画布
+    }
+
+    // ---------- Canvas pan-drag ----------
+    function applyPan() {
+      document.getElementById('canvas').style.transform = 'translate(' + panX + 'px, ' + panY + 'px)';
+      document.getElementById('ruler').style.transform = 'translateX(' + panX + 'px)';
+      document.getElementById('lane-labels').style.transform = 'translateY(' + panY + 'px)';
+    }
+
+    function clampPan() {
+      var OVERSCROLL = 80;
+      var viewport = document.getElementById('viewport');
+      var canvas = document.getElementById('canvas');
+      var vw = viewport.clientWidth;
+      var vh = viewport.clientHeight - 34;
+      var cw = canvas.offsetWidth;
+      var ch = canvas.offsetHeight;
+
+      // panX == 0 means canvas left edge at viewport left edge.
+      // Allow dragging until canvas right edge reaches viewport left edge (panX = -cw),
+      // or canvas left edge reaches viewport right edge (panX = vw), plus overscroll slack.
+      panX = Math.max(Math.min(panX, vw + OVERSCROLL), -cw - OVERSCROLL);
+      panY = Math.max(Math.min(panY, vh + OVERSCROLL), -ch - OVERSCROLL);
+    }
+
+    function initCanvasDrag() {
+      var viewport = document.getElementById('viewport');
+      viewport.addEventListener('mousedown', function (e) {
+        if (e.target.closest('.node-card')) return;
+        drag = { startX: e.clientX, startY: e.clientY, panX: panX, panY: panY };
+        viewport.classList.add('dragging');
+        e.preventDefault();
+      });
+      window.addEventListener('mousemove', function (e) {
+        if (drag) {
+          panX = drag.panX + (e.clientX - drag.startX);
+          panY = drag.panY + (e.clientY - drag.startY);
+          clampPan();
+          applyPan();
+        }
+        if (cardDrag) {
+          handleCardDragMove(e);
+        }
+      });
+      window.addEventListener('mouseup', function () {
+        if (drag) {
+          drag = null;
+          viewport.classList.remove('dragging');
+        }
+        if (cardDrag) {
+          finishCardDrag();
+        }
+      });
+    }
+
+    // ---------- Card vertical drag (adjust above/below offset) ----------
+    function onCardMouseDown(e) {
+      e.stopPropagation();
+      var card = e.currentTarget;
+      cardDrag = {
+        card: card,
+        timelineId: card.dataset.timelineId,
+        nodeId: card.dataset.nodeId,
+        startY: e.clientY,
+        startTop: parseFloat(card.style.top),
+        moved: false
+      };
+      card.classList.add('dragging');
+    }
+
+    function handleCardDragMove(e) {
+      if (!cardDrag) return;
+      var dy = e.clientY - cardDrag.startY;
+      if (Math.abs(dy) > 3) cardDrag.moved = true;
+      var newTop = cardDrag.startTop + dy;
+      var minTop = 14, maxTop = LANE_H - 14;
+      newTop = Math.max(minTop, Math.min(maxTop, newTop));
+      cardDrag.card.style.top = newTop + 'px';
+
+      var lane = cardDrag.card.parentElement;
+      var x = parseFloat(cardDrag.card.style.left);
+      var stem = Array.prototype.find.call(lane.querySelectorAll('.node-stem'), function (s) {
+        return Math.abs(parseFloat(s.style.left) - x) < 0.5;
+      });
+      if (stem) {
+        var vOffset = newTop - LANE_H / 2;
+        if (vOffset < 0) { stem.style.top = newTop + 'px'; stem.style.height = (-vOffset) + 'px'; }
+        else { stem.style.top = (LANE_H / 2) + 'px'; stem.style.height = vOffset + 'px'; }
+      }
+    }
+
+    function finishCardDrag() {
+      if (!cardDrag) return;
+      var moved = cardDrag.moved;
+      var card = cardDrag.card;
+      card.classList.remove('dragging');
+
+      if (moved) {
+        card.dataset.justDragged = '1';
+        var tl = getTimeline(cardDrag.timelineId);
+        var node = tl && tl.nodes.find(function (n) { return n.id === cardDrag.nodeId; });
+        if (node) {
+          var top = parseFloat(card.style.top);
+          node.vOffset = top - LANE_H / 2;
+          saveState();
+        }
+      }
+      cardDrag = null;
+    }
+
+    // ---------- Node CRUD ----------
+    function deleteNode(timelineId, nodeId) {
+      var tl = getTimeline(timelineId);
+      if (!tl) return;
+      if (!confirm('删除该节点？')) return;
+      tl.nodes = tl.nodes.filter(function (n) { return n.id !== nodeId; });
+      saveState();
+      renderAll();
+    }
+
+    // ---------- Modal ----------
+    function populateTimelineSelect() {
+      var sel = document.getElementById('field-timeline');
+      sel.innerHTML = '';
+      state.timelines.forEach(function (tl) {
+        var opt = document.createElement('option');
+        opt.value = tl.id;
+        opt.textContent = tl.name;
+        sel.appendChild(opt);
+      });
+    }
+
+    function resetModalFields() {
+      document.getElementById('field-date').value = todayStr();
+      document.getElementById('field-title').value = '';
+      document.getElementById('field-detail').value = '';
+      document.getElementById('field-link').value = '';
+      setSentiment('neutral');
+      setColor(randomNodeColor());
+    }
+
+    function setSentiment(v) {
+      modalSentiment = v;
+      document.querySelectorAll('.sentiment-btn').forEach(function (btn) {
+        btn.classList.toggle('active', btn.dataset.v === v);
+      });
+    }
+
+    function buildColorSwatches() {
+      var row = document.getElementById('color-swatch-row');
+      var customWrap = document.getElementById('color-custom-wrap');
+      row.querySelectorAll('.color-swatch').forEach(function (s) { s.remove(); });
+      NODE_COLOR_PALETTE.forEach(function (hex) {
+        var sw = document.createElement('div');
+        sw.className = 'color-swatch';
+        sw.dataset.color = hex;
+        sw.style.background = hex;
+        sw.addEventListener('click', function () { setColor(hex); });
+        row.insertBefore(sw, customWrap);
+      });
+    }
+
+    function setColor(hex) {
+      modalColor = hex;
+      document.getElementById('field-color-custom').value = hex;
+      var isPreset = NODE_COLOR_PALETTE.indexOf(hex) !== -1;
+      document.querySelectorAll('.color-swatch').forEach(function (sw) {
+        sw.classList.toggle('active', isPreset && sw.dataset.color === hex);
+      });
+      document.getElementById('color-custom-wrap').classList.toggle('active', !isPreset);
+    }
+
+    function openAddModal(timelineId) {
+      modalMode = 'add';
+      modalContext = { timelineId: timelineId };
+      document.getElementById('modal-title').textContent = '✦ 添加节点';
+      document.getElementById('field-timeline-wrap').style.display = '';
+      resetModalFields();
+      document.getElementById('field-timeline').value = timelineId;
+      document.getElementById('modal-overlay').classList.add('show');
+      document.getElementById('field-title').focus();
+    }
+
+    function openInsertModal(timelineId, anchorNodeId, side) {
+      var tl = getTimeline(timelineId);
+      var anchor = tl.nodes.find(function (n) { return n.id === anchorNodeId; });
+      modalMode = 'add';
+      modalContext = { timelineId: timelineId };
+      document.getElementById('modal-title').textContent = side === 'before' ? '✦ 在此节点之前插入' : '✦ 在此节点之后插入';
+      document.getElementById('field-timeline-wrap').style.display = 'none';
+      resetModalFields();
+      document.getElementById('field-timeline').value = timelineId;
+      document.getElementById('field-date').value = side === 'before' ? addDays(anchor.date, -1) : addDays(anchor.date, 1);
+      document.getElementById('modal-overlay').classList.add('show');
+      document.getElementById('field-title').focus();
+    }
+
+    function openEditModal(timelineId, nodeId) {
+      var tl = getTimeline(timelineId);
+      var node = tl.nodes.find(function (n) { return n.id === nodeId; });
+      modalMode = 'edit';
+      modalContext = { timelineId: timelineId, nodeId: nodeId };
+      document.getElementById('modal-title').textContent = '✎ 编辑节点';
+      document.getElementById('field-timeline-wrap').style.display = 'none';
+      document.getElementById('field-date').value = node.date;
+      document.getElementById('field-title').value = node.title;
+      document.getElementById('field-detail').value = node.detail || '';
+      document.getElementById('field-link').value = node.link || '';
+      setSentiment(node.sentiment || 'neutral');
+      setColor(node.color || randomNodeColor());
+      document.getElementById('modal-overlay').classList.add('show');
+      document.getElementById('field-title').focus();
+    }
+
+    function closeModal() {
+      document.getElementById('modal-overlay').classList.remove('show');
+      modalMode = null;
+      modalContext = null;
+    }
+
+    function saveModal() {
+      var date = document.getElementById('field-date').value;
+      var title = document.getElementById('field-title').value.trim();
+      var detail = document.getElementById('field-detail').value.trim();
+      var link = document.getElementById('field-link').value.trim();
+
+      if (!date) { alert('请选择日期'); return; }
+      if (!title) { alert('请填写标题'); return; }
+
+      var timelineId = modalMode === 'add' ? document.getElementById('field-timeline').value : modalContext.timelineId;
+      var tl = getTimeline(timelineId);
+      if (!tl) return;
+
+      var now = Date.now();
+      if (modalMode === 'add') {
+        tl.nodes.push({
+          id: uuid(),
+          date: date,
+          title: title,
+          detail: detail,
+          link: link,
+          color: modalColor || randomNodeColor(),
+          sentiment: modalSentiment,
+          createdAt: now,
+          updatedAt: now
+        });
+        if (state.visibleIds.indexOf(tl.id) === -1) state.visibleIds.push(tl.id);
+      } else if (modalMode === 'edit') {
+        var node = tl.nodes.find(function (n) { return n.id === modalContext.nodeId; });
+        if (node) {
+          node.date = date;
+          node.title = title;
+          node.detail = detail;
+          node.link = link;
+          node.color = modalColor || node.color || randomNodeColor();
+          node.sentiment = modalSentiment;
+          node.updatedAt = now;
+        }
+      }
+
+      tl.updatedAt = now;
+      sortNodes(tl);
+      saveState();
+      closeModal();
+      renderAll();
+    }
+
+    // ---------- Timeline CRUD ----------
+    function createTimeline() {
+      var name = prompt('时间线名称（如公司/人物/事件名）', '');
+      if (!name || !name.trim()) return;
+      var tl = {
+        id: uuid(),
+        name: name.trim(),
+        category: '事件',
+        createdAt: Date.now(),
+        nodes: []
+      };
+      state.timelines.push(tl);
+      state.visibleIds.push(tl.id);
+      saveState();
+      renderAll();
+    }
+
+    // ---------- Export / Import ----------
+    function exportData() {
+      var blob = new Blob([JSON.stringify(state, null, 2)], { type: 'application/json' });
+      var url = URL.createObjectURL(blob);
+      var a = document.createElement('a');
+      a.href = url;
+      a.download = 'trading-timeline-backup-' + todayStr() + '.json';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    }
+
+    function importData(file) {
+      var reader = new FileReader();
+      reader.onload = function () {
+        try {
+          var data = JSON.parse(reader.result);
+          if (!data || !Array.isArray(data.timelines)) throw new Error('格式不正确');
+          if (!confirm('导入将覆盖当前所有数据，确定继续？')) return;
+          state = normalizeState(data);
+          saveState();
+          renderAll();
+          showToast('导入成功', 'success');
+        } catch (e) {
+          alert('导入失败：文件格式不正确');
+        }
+      };
+      reader.readAsText(file);
+    }
+
+    // ---------- Zoom ----------
+    function zoom(factor) {
+      pxPerDay = Math.max(MIN_PX_PER_DAY, Math.min(MAX_PX_PER_DAY, Math.round(pxPerDay * factor)));
+      renderMain();
+    }
+
+    function fitToData() {
+      var visible = getVisibleTimelines();
+      var viewport = document.getElementById('viewport');
+      var allNodes = [];
+      visible.forEach(function (tl) {
+        tl.nodes.forEach(function (n) { allNodes.push(n.date); });
+      });
+      if (allNodes.length > 1) {
+        var idxs = allNodes.map(dateToDayIndex);
+        var span = Math.max.apply(null, idxs) - Math.min.apply(null, idxs) + 6; // matches minIdx/maxIdx padding in renderMain
+        var fitPxPerDay = Math.floor(viewport.clientWidth / Math.max(span, 1));
+        pxPerDay = Math.max(MIN_PX_PER_DAY, Math.min(MAX_PX_PER_DAY, fitPxPerDay));
+      }
+      renderMain();
+      resetPanToCenter();
+    }
+
+    function resetPanToCenter() {
+      var viewport = document.getElementById('viewport');
+      var canvas = document.getElementById('canvas');
+      var cw = canvas.offsetWidth;
+      panX = viewport.clientWidth / 2 - cw / 2;
+      panY = 0;
+      clampPan();
+      applyPan();
+    }
+
+    // ---------- Toast ----------
+    function showToast(msg, type) {
+      var stack = document.getElementById('toast-stack');
+      var toast = document.createElement('div');
+      toast.className = 'toast' + (type ? ' ' + type : '');
+      toast.textContent = msg;
+      stack.appendChild(toast);
+      requestAnimationFrame(function () { toast.classList.add('show'); });
+      setTimeout(function () {
+        toast.classList.remove('show');
+        setTimeout(function () { toast.remove(); }, 250);
+      }, 2600);
+    }
+
+    // ---------- GitHub Gist Sync ----------
+    function getToken() {
+      return localStorage.getItem(TOKEN_KEY) || '';
+    }
+
+    function setToken(token) {
+      if (token) localStorage.setItem(TOKEN_KEY, token);
+      else localStorage.removeItem(TOKEN_KEY);
+    }
+
+    function openSyncConfigModal() {
+      document.getElementById('field-gh-token').value = getToken();
+      document.getElementById('field-gist-id').value = (state.syncMeta && state.syncMeta.gistId) || '';
+      document.getElementById('sync-modal-overlay').classList.add('show');
+    }
+
+    function closeSyncConfigModal() {
+      document.getElementById('sync-modal-overlay').classList.remove('show');
+    }
+
+    function clearSyncConfig() {
+      if (!confirm('清除本地保存的 Token 与 Gist 关联？（不会删除远端 Gist 数据）')) return;
+      setToken('');
+      state.syncMeta = { gistId: null, lastSyncAt: 0 };
+      saveState();
+      closeSyncConfigModal();
+      showToast('已清除同步配置');
+    }
+
+    function saveSyncConfigAndSync() {
+      var token = document.getElementById('field-gh-token').value.trim();
+      var gistId = document.getElementById('field-gist-id').value.trim();
+      if (!token) { alert('请填写 Personal Access Token'); return; }
+      setToken(token);
+      state.syncMeta = state.syncMeta || { gistId: null, lastSyncAt: 0 };
+      state.syncMeta.gistId = gistId || null;
+      saveState();
+      closeSyncConfigModal();
+      doSync();
+    }
+
+    function ghRequest(method, path, body) {
+      return fetch(GH_API + path, {
+        method: method,
+        headers: {
+          'Authorization': 'Bearer ' + getToken(),
+          'Accept': 'application/vnd.github+json',
+          'Content-Type': 'application/json'
+        },
+        body: body ? JSON.stringify(body) : undefined
+      }).then(function (res) {
+        if (!res.ok) {
+          var err = new Error('GitHub API 请求失败: ' + res.status);
+          err.status = res.status;
+          throw err;
+        }
+        return res.json();
+      });
+    }
+
+    function setSyncButtonBusy(busy) {
+      var btn = document.getElementById('btn-sync');
+      btn.classList.toggle('syncing', busy);
+      btn.innerHTML = busy ? '<span class="spin-icon">↻</span> 同步中' : '☁ 同步';
+    }
+
+    function mergeEntities(localList, remoteList, idKey) {
+      var byId = {};
+      localList.forEach(function (item) { byId[item[idKey]] = item; });
+      remoteList.forEach(function (remoteItem) {
+        var localItem = byId[remoteItem[idKey]];
+        if (!localItem) {
+          byId[remoteItem[idKey]] = remoteItem;
+        } else {
+          var localTime = localItem.updatedAt || localItem.createdAt || 0;
+          var remoteTime = remoteItem.updatedAt || remoteItem.createdAt || 0;
+          if (remoteTime > localTime) byId[remoteItem[idKey]] = remoteItem;
+        }
+      });
+      return Object.keys(byId).map(function (k) { return byId[k]; });
+    }
+
+    function mergeState(local, remote) {
+      var mergedTimelines = mergeEntities(local.timelines, remote.timelines || [], 'id').map(function (tl) {
+        var localTl = local.timelines.find(function (t) { return t.id === tl.id; });
+        var remoteTl = (remote.timelines || []).find(function (t) { return t.id === tl.id; });
+        var localNodes = (localTl && localTl.nodes) || [];
+        var remoteNodes = (remoteTl && remoteTl.nodes) || [];
+        tl.nodes = mergeEntities(localNodes, remoteNodes, 'id');
+        return tl;
+      });
+      var visibleIds = local.visibleIds.slice();
+      mergedTimelines.forEach(function (tl) {
+        if (visibleIds.indexOf(tl.id) === -1 && (remote.visibleIds || []).indexOf(tl.id) !== -1) {
+          visibleIds.push(tl.id);
+        }
+      });
+      return {
+        timelines: mergedTimelines,
+        visibleIds: visibleIds,
+        activeTimelineId: local.activeTimelineId,
+        syncMeta: local.syncMeta
+      };
+    }
+
+    function doSync() {
+      if (syncing) return;
+      if (!getToken()) { openSyncConfigModal(); return; }
+      syncing = true;
+      setSyncButtonBusy(true);
+
+      var gistId = state.syncMeta && state.syncMeta.gistId;
+      var flow;
+      if (!gistId) {
+        flow = ghRequest('POST', '/gists', {
+          description: 'trading-timeline-sync',
+          public: false,
+          files: buildGistFiles(state)
+        }).then(function (created) {
+          state.syncMeta = { gistId: created.id, lastSyncAt: Date.now() };
+          saveState();
+        });
+      } else {
+        flow = ghRequest('GET', '/gists/' + gistId).then(function (gist) {
+          var file = gist.files && gist.files[GIST_FILENAME];
+          var remoteState = file ? JSON.parse(file.content) : { timelines: [], visibleIds: [] };
+          var merged = mergeState(state, remoteState);
+          state = normalizeState(merged);
+          state.syncMeta.gistId = gistId;
+          return ghRequest('PATCH', '/gists/' + gistId, { files: buildGistFiles(state) });
+        }).then(function () {
+          state.syncMeta.lastSyncAt = Date.now();
+          saveState();
+          renderAll();
+        });
+      }
+
+      flow.then(function () {
+        syncing = false;
+        setSyncButtonBusy(false);
+        showToast('同步成功 · ' + new Date().toLocaleTimeString(), 'success');
+      }).catch(function (err) {
+        syncing = false;
+        setSyncButtonBusy(false);
+        if (err.status === 401) {
+          showToast('Token 无效或已过期，请重新配置', 'error');
+          openSyncConfigModal();
+        } else if (err.status === 404) {
+          showToast('Gist 不存在，请检查 ID 或清除配置后重新创建', 'error');
+          openSyncConfigModal();
+        } else {
+          showToast('同步失败：' + err.message, 'error');
+        }
+      });
+    }
+
+    function buildGistFiles(s) {
+      var exportable = { timelines: s.timelines, visibleIds: s.visibleIds, activeTimelineId: s.activeTimelineId };
+      var files = {};
+      files[GIST_FILENAME] = { content: JSON.stringify(exportable, null, 2) };
+      return files;
+    }
+
+    // ---------- Init ----------
+    function init() {
+      state = loadState();
+      if (!Array.isArray(state.visibleIds)) state.visibleIds = [];
+
+      initCanvasDrag();
+
+      document.getElementById('btn-new-timeline').addEventListener('click', createTimeline);
+      document.getElementById('btn-new-timeline-2').addEventListener('click', createTimeline);
+      document.getElementById('btn-add-node').addEventListener('click', function () {
+        var visible = getVisibleTimelines();
+        var timelineId = visible.length ? visible[0].id : (state.timelines[0] && state.timelines[0].id);
+        if (timelineId) openAddModal(timelineId);
+        else alert('请先新建一条时间线');
+      });
+
+      document.querySelectorAll('.sentiment-btn').forEach(function (btn) {
+        btn.addEventListener('click', function () { setSentiment(btn.dataset.v); });
+      });
+
+      buildColorSwatches();
+      document.getElementById('field-color-custom').addEventListener('input', function (e) {
+        setColor(e.target.value);
+      });
+
+      document.getElementById('btn-modal-cancel').addEventListener('click', closeModal);
+      document.getElementById('btn-modal-save').addEventListener('click', saveModal);
+      document.getElementById('modal-overlay').addEventListener('click', function (e) {
+        if (e.target.id === 'modal-overlay') closeModal();
+      });
+      document.addEventListener('keydown', function (e) {
+        if (e.key === 'Escape') { closeModal(); closeSyncConfigModal(); }
+      });
+
+      document.getElementById('btn-export').addEventListener('click', exportData);
+      document.getElementById('btn-import-trigger').addEventListener('click', function () {
+        document.getElementById('import-file').click();
+      });
+      document.getElementById('import-file').addEventListener('change', function (e) {
+        if (e.target.files.length) importData(e.target.files[0]);
+        e.target.value = '';
+      });
+
+      document.getElementById('btn-zoom-in').addEventListener('click', function () { zoom(1.25); });
+      document.getElementById('btn-zoom-out').addEventListener('click', function () { zoom(0.8); });
+      document.getElementById('btn-zoom-reset').addEventListener('click', fitToData);
+      document.getElementById('btn-toggle-ruler').addEventListener('click', toggleRuler);
+      document.getElementById('btn-sidebar-toggle').addEventListener('click', toggleSidebar);
+
+      document.getElementById('btn-sync').addEventListener('click', function () {
+        if (!getToken()) { openSyncConfigModal(); return; }
+        doSync();
+      });
+      document.getElementById('btn-sync-config').addEventListener('click', openSyncConfigModal);
+      document.getElementById('btn-sync-config-cancel').addEventListener('click', closeSyncConfigModal);
+      document.getElementById('btn-sync-clear').addEventListener('click', clearSyncConfig);
+      document.getElementById('btn-sync-config-save').addEventListener('click', saveSyncConfigAndSync);
+      document.getElementById('sync-modal-overlay').addEventListener('click', function (e) {
+        if (e.target.id === 'sync-modal-overlay') closeSyncConfigModal();
+      });
+
+      window.addEventListener('resize', function () { renderMain(); });
+
+      if (!state.timelines.length) {
+        // 首次使用：写入两条示例时间线，帮助理解多轨道叠加用法
+        var now0 = Date.now();
+        var sampleA = {
+          id: uuid(),
+          name: '示例：英伟达 (NVDA)',
+          category: '公司',
+          createdAt: now0,
+          updatedAt: now0,
+          nodes: [
+            { id: uuid(), date: addDays(todayStr(), -60), title: '数据中心业务超预期', detail: '财报显示数据中心营收同比大幅增长，市场情绪转向乐观。', link: '', color: randomNodeColor(), sentiment: 'bullish', createdAt: now0, updatedAt: now0 },
+            { id: uuid(), date: addDays(todayStr(), -30), title: '出口管制消息', detail: '传闻新增出口限制，短期利空，需观察政策落地情况。', link: '', color: randomNodeColor(), sentiment: 'bearish', createdAt: now0, updatedAt: now0 },
+            { id: uuid(), date: addDays(todayStr(), -5), title: '新品发布会', detail: '发布新一代芯片架构，市场反应中性偏正，等待订单数据验证。', link: '', color: randomNodeColor(), sentiment: 'neutral', createdAt: now0, updatedAt: now0 }
+          ]
+        };
+        var sampleB = {
+          id: uuid(),
+          name: '示例：美联储议息',
+          category: '宏观',
+          createdAt: now0,
+          updatedAt: now0,
+          nodes: [
+            { id: uuid(), date: addDays(todayStr(), -45), title: '维持利率不变', detail: '符合市场预期，鹰派措辞略有软化。', link: '', color: randomNodeColor(), sentiment: 'neutral', createdAt: now0, updatedAt: now0 },
+            { id: uuid(), date: addDays(todayStr(), -10), title: '通胀数据超预期回落', detail: '市场提前定价降息概率上升。', link: '', color: randomNodeColor(), sentiment: 'bullish', createdAt: now0, updatedAt: now0 }
+          ]
+        };
+        state.timelines.push(sampleA, sampleB);
+        state.visibleIds.push(sampleA.id, sampleB.id);
+        saveState();
+      }
+
+      renderAll();
+      requestAnimationFrame(fitToData);
+    }
+
+    init();
+  })();
+</script>
+</body>
+</html>
