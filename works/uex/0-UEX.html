@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>JSON对比</title>
+    <title>UEX</title>
     <style>
         :root {
             --bg-color: #f4f7f9;
@@ -342,14 +342,14 @@
 <script>
     // ── 列定义 ────────────────────────────────────────────────────
     const ALL_COLS = [
-        { key: 'symbol',  label: '标的',              width: 180, sortField: null },
-        { key: 'price',   label: '实时价格',            width: 150, sortField: 'price' },
-        { key: 'change',  label: '24h 涨跌幅',          width: 110, sortField: 'change' },
-        { key: 'amp',     label: '24h 振幅',            width: 100, sortField: 'amp' },
-        { key: 'vol',     label: '24h 成交额 (万$)',     width: 150, sortField: 'vol' },
-        { key: 'mktcap',  label: '市值 ($)',            width: 130, sortField: 'mktcap' },
-        { key: 'high',    label: '24h 最高价',          width: 120, sortField: null },
-        { key: 'low',     label: '24h 最低价',          width: 120, sortField: null },
+        { key: 'symbol',  label: '标的',              width: 110, sortField: null },
+        { key: 'price',   label: '实时价格',            width: 100, sortField: 'price' },
+        { key: 'change',  label: '涨跌幅',          width: 110, sortField: 'change' },
+        { key: 'amp',     label: '振幅',            width: 100, sortField: 'amp' },
+        { key: 'vol',     label: '成交额',     width: 100, sortField: 'vol' },
+        { key: 'mktcap',  label: '市值 ($)',            width: 100, sortField: 'mktcap' },
+        { key: 'high',    label: '24h 最高价',          width: 100, sortField: null },
+        { key: 'low',     label: '24h 最低价',          width: 100, sortField: null },
     ];
 
     let visibleCols = ALL_COLS.map(c => c.key);
@@ -668,8 +668,7 @@
                         const frClass = parseFloat(d.capitalRate) >= 0 ? 'up' : 'down';
                         const frSign  = parseFloat(d.capitalRate) >= 0 ? '+' : '';
                         extra = `<div style="font-size:11px;color:#999;margin-top:2px;font-weight:400">` +
-                            `标记价 <span style="color:#555">${fmtPrice(d.markPrice)}</span>` +
-                            ` &nbsp;|&nbsp; 资金费率 <span class="${frClass}">${frSign}${d.capitalRate}%</span>` +
+                            `资金费 <span class="${frClass}">${frSign}${d.capitalRate}%</span>` +
                             `</div>`;
                     }
                     return `<td class="price-val">${fmtPrice(d.price)}${extra}</td>`;
