@@ -9,8 +9,8 @@
             --bg-color: #f4f7f9;
             --card-bg: #ffffff;
             --primary-blue: #0066ff;
-            --up-color: #02ad8f;
-            --down-color: #f84960;
+            --up-color: #16a34a;
+            --down-color: #ef4444;
             --border-color: #e1e4e8;
             --text-main: #333;
             --text-sub: #888;
@@ -38,8 +38,8 @@
             --bg-color: #14161a;
             --card-bg: #1c1f26;
             --primary-blue: #4d94ff;
-            --up-color: #2dd4a8;
-            --down-color: #ff6b7a;
+            --up-color: #4ade80;
+            --down-color: #f87171;
             --border-color: #333844;
             --text-main: #e4e6eb;
             --text-sub: #a0a5ad;
@@ -1763,11 +1763,16 @@
     }
 
     // ── GitHub Gist 全局同步（币种列表 / 笔记 / 主题 / 列显示 / 快捷链接） ──
+    // 默认 Token / Gist ID（本地未配置时使用，开箱即用）
+    const DEFAULT_GIST_TOKEN = '';
+    const DEFAULT_GIST_ID = '277188da040bda2ebed6d025c1f4778b';
+
     function loadGistConfig() {
         try {
             const raw = localStorage.getItem(GIST_CONFIG_KEY);
-            return raw ? JSON.parse(raw) : { token: '', gistId: '' };
-        } catch { return { token: '', gistId: '' }; }
+            const cfg = raw ? JSON.parse(raw) : {};
+            return { token: cfg.token || DEFAULT_GIST_TOKEN, gistId: cfg.gistId || DEFAULT_GIST_ID };
+        } catch { return { token: DEFAULT_GIST_TOKEN, gistId: DEFAULT_GIST_ID }; }
     }
 
     function saveGistConfigObj(cfg) {

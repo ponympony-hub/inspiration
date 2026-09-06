@@ -17,7 +17,7 @@
           --bull: #16a34a;
           --bear: #ef4444;
           --neutral: #94a3b8;
-          --lane-h: 130px;
+          --lane-h: 170px;
           --px-per-day: 42;
         }
         html, body { height: 100%; }
@@ -172,6 +172,9 @@
           gap: 4px;
         }
         .tl-item:hover .tl-actions { display: flex; }
+        .tl-item.dragging { opacity: 0.45; }
+        .tl-item.drop-before { box-shadow: inset 0 3px 0 #60a5fa; }
+        .tl-item.drop-after { box-shadow: inset 0 -3px 0 #60a5fa; }
         .icon-btn {
           width: 20px; height: 20px;
           display: flex; align-items: center; justify-content: center;
@@ -307,6 +310,8 @@
           height: var(--lane-h);
           border-bottom: 1px dashed rgba(255,255,255,0.08);
         }
+        #canvas .lane:nth-child(even) { background: rgba(255,255,255,0.035); }
+        #canvas .lane:nth-child(odd) { background: rgba(255,255,255,0.015); }
         .lane-baseline {
           position: absolute;
           left: 0;
@@ -350,6 +355,7 @@
         }
         .node-card:active { cursor: grabbing; }
         .node-card.dragging { opacity: 0.85; box-shadow: 0 10px 24px rgba(0,0,0,0.5); z-index: 20; }
+        .node-card.card-focused { outline: 2px solid rgba(96,165,250,0.9); outline-offset: 2px; }
         .node-card.expanded { max-width: 260px; z-index: 10; }
         .node-card.has-link:hover { box-shadow: 0 4px 14px rgba(0,0,0,0.35), 0 0 0 2px rgba(59,130,246,0.5); }
         .node-link-badge {
@@ -416,6 +422,7 @@
           display: none;
           gap: 4px;
           margin-top: 6px;
+          flex-wrap: wrap;
         }
         .node-card.expanded .node-toolbar { display: flex; }
         .node-toolbar button {
@@ -430,6 +437,28 @@
         }
         .node-toolbar button:hover { background: rgba(0,0,0,0.09); }
         .node-toolbar button.del:hover { background: rgba(239, 68, 68, 0.15); color: #b91c1c; }
+
+        /* ── 节点悬浮详情 Tooltip ── */
+        .node-tooltip {
+            position: fixed;
+            z-index: 100;
+            max-width: 300px;
+            background: #1a2030;
+            border: 1px solid rgba(59, 130, 246, 0.45);
+            border-radius: 10px;
+            padding: 10px 12px;
+            font-size: 12px;
+            line-height: 1.55;
+            color: #e2e8f0;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.45);
+            pointer-events: none;
+        }
+        .node-tooltip .tt-title { font-size: 13px; font-weight: 700; color: #fff; margin-bottom: 4px; }
+        .node-tooltip .tt-meta { display: flex; gap: 8px; align-items: center; margin-bottom: 4px; flex-wrap: wrap; }
+        .node-tooltip .tt-date { color: #93c5fd; font-weight: 600; }
+        .node-tooltip .tt-sentiment { padding: 1px 6px; border-radius: 8px; font-size: 11px; font-weight: 600; }
+        .node-tooltip .tt-detail { color: #cbd5e1; white-space: pre-wrap; word-break: break-word; }
+        .node-tooltip .tt-link { color: #60a5fa; word-break: break-all; }
 
         /* ---------- Modal ---------- */
         @keyframes modal-in {
@@ -650,12 +679,13 @@
 
 <div id="main">
     <div id="main-header">
-        <div class="hint-text">勾选左侧时间线可叠加显示在同一时间轴上；拖动画布可左右平移，拖动卡片可调整上下位置</div>
+        <div class="hint-text">🔥卖在人声鼎沸时！📈</div>
         <div id="zoom-controls">
             <button class="btn small ghost" id="btn-zoom-out">－</button>
             <button class="btn small ghost" id="btn-zoom-reset">适应窗口</button>
             <button class="btn small ghost" id="btn-zoom-in">＋</button>
             <button class="btn small ghost" id="btn-toggle-ruler" style="margin-left:8px;" title="隐藏后节点按均匀间距排列">🕐 时间刻度</button>
+            <button class="btn small ghost" id="btn-sort" style="margin-left:8px;" title="切换节点排序：时间正序/倒序">⬇ 时间正序</button>
             <button class="btn small" id="btn-add-node" style="margin-left:8px;">+ 添加节点</button>
         </div>
     </div>
@@ -733,6 +763,8 @@
             <input type="text" id="field-gist-id" placeholder="例如 a1b2c3d4e5f6...">
         </div>
         <div id="sync-modal-actions">
+            <button class="btn ghost" id="btn-sync-pull">⬇ 仅拉取</button>
+            <button class="btn ghost" id="btn-sync-push">⬆ 仅推送</button>
             <button class="btn ghost" id="btn-sync-clear">清除配置</button>
             <button class="btn ghost" id="btn-sync-config-cancel">取消</button>
             <button class="btn" id="btn-sync-config-save">保存并同步</button>
@@ -742,12 +774,18 @@
 
 <div id="toast-stack"></div>
 
+<!-- ── 节点悬浮详情 Tooltip ── -->
+<div id="node-tooltip" class="node-tooltip" style="display:none"></div>
+
 <script>
     (function () {
       'use strict';
 
       var STORAGE_KEY = 'trading-timeline-data-v2';
       var TOKEN_KEY = 'trading-timeline-gh-token';
+      // 默认同步配置（本地未配置时使用，开箱即用）
+      var DEFAULT_GH_TOKEN = '';
+      var DEFAULT_GIST_ID = '6ceb43321b6f76d669e9329dd7a52921';
       var CATEGORY_COLORS = { '公司': '#3b82f6', '人物': '#f59e0b', '事件': '#ef4444', '宏观': '#10b981' };
       var SENTIMENT_LABEL = { bullish: '📈 看多', bearish: '📉 看空', neutral: '➖ 中性' };
       var SENTIMENT_COLOR = { bullish: '#16a34a', bearish: '#ef4444', neutral: '#94a3b8' };
@@ -757,7 +795,7 @@
         '#818cf8', '#facc15'
       ];
       var DAY_MS = 24 * 60 * 60 * 1000;
-      var LANE_H = 130;
+      var LANE_H = 170;
       var MIN_PX_PER_DAY = 6;
       var MAX_PX_PER_DAY = 160;
       var EVEN_SPACING_PX = 150; // 均匀铺开模式下的固定节点间距，与 pxPerDay 无关
@@ -957,6 +995,22 @@
 
           var actions = document.createElement('div');
           actions.className = 'tl-actions';
+          var upBtn = document.createElement('div');
+          upBtn.className = 'icon-btn';
+          upBtn.textContent = '↑';
+          upBtn.title = '上移（调整时间线列表顺序）';
+          upBtn.addEventListener('click', function (e) {
+            e.stopPropagation();
+            moveTimeline(tl.id, -1);
+          });
+          var downBtn = document.createElement('div');
+          downBtn.className = 'icon-btn';
+          downBtn.textContent = '↓';
+          downBtn.title = '下移（调整时间线列表顺序）';
+          downBtn.addEventListener('click', function (e) {
+            e.stopPropagation();
+            moveTimeline(tl.id, 1);
+          });
           var renameBtn = document.createElement('div');
           renameBtn.className = 'icon-btn';
           renameBtn.textContent = '✎';
@@ -973,6 +1027,8 @@
             e.stopPropagation();
             deleteTimeline(tl.id);
           });
+          actions.appendChild(upBtn);
+          actions.appendChild(downBtn);
           actions.appendChild(renameBtn);
           actions.appendChild(delBtn);
           item.appendChild(actions);
@@ -983,8 +1039,66 @@
             toggleVisible(tl.id, checkbox.checked);
           });
 
+          // ── 拖拽排序 ──
+          item.draggable = true;
+          item.addEventListener('dragstart', function (e) {
+            e.dataTransfer.effectAllowed = 'move';
+            e.dataTransfer.setData('text/plain', tl.id);
+            item.classList.add('dragging');
+          });
+          item.addEventListener('dragover', function (e) {
+            e.preventDefault();
+            e.dataTransfer.dropEffect = 'move';
+            var rect = item.getBoundingClientRect();
+            var before = e.clientY < rect.top + rect.height / 2;
+            item.classList.toggle('drop-before', before);
+            item.classList.toggle('drop-after', !before);
+          });
+          item.addEventListener('dragleave', function () {
+            item.classList.remove('drop-before', 'drop-after');
+          });
+          item.addEventListener('drop', function (e) {
+            e.preventDefault();
+            item.classList.remove('drop-before', 'drop-after');
+            var srcId = e.dataTransfer.getData('text/plain');
+            if (!srcId || srcId === tl.id) return;
+            var srcIdx = -1, dstIdx = -1;
+            for (var i = 0; i < state.timelines.length; i++) {
+              if (state.timelines[i].id === srcId) srcIdx = i;
+              if (state.timelines[i].id === tl.id) dstIdx = i;
+            }
+            if (srcIdx < 0 || dstIdx < 0) return;
+            var rect = item.getBoundingClientRect();
+            var before = e.clientY < rect.top + rect.height / 2;
+            var moved = state.timelines.splice(srcIdx, 1)[0];
+            var newDst = -1;
+            for (var j = 0; j < state.timelines.length; j++) if (state.timelines[j].id === tl.id) { newDst = j; break; }
+            var insertAt = before ? newDst : newDst + 1;
+            state.timelines.splice(insertAt, 0, moved);
+            saveState();
+            renderAll();
+          });
+          item.addEventListener('dragend', function () {
+            document.querySelectorAll('#timeline-list .tl-item').forEach(function (i) {
+              i.classList.remove('dragging', 'drop-before', 'drop-after');
+            });
+          });
+
           list.appendChild(item);
         });
+      }
+
+      // 调整左侧时间线列表顺序（同时影响画布 lane 顺序）
+      function moveTimeline(id, dir) {
+        var idx = -1;
+        for (var i = 0; i < state.timelines.length; i++) if (state.timelines[i].id === id) { idx = i; break; }
+        var to = idx + dir;
+        if (idx < 0 || to < 0 || to >= state.timelines.length) return;
+        var tmp = state.timelines[idx];
+        state.timelines[idx] = state.timelines[to];
+        state.timelines[to] = tmp;
+        saveState();
+        renderAll();
       }
 
       function toggleVisible(id, on) {
@@ -1025,12 +1139,23 @@
         return EVEN_SPACING_PX;
       }
 
-      function computeNodeX(tl, node, minIdx) {
+      function computeNodeX(tl, node, minIdx, sortedIdx) {
         if (isRulerVisible()) {
           return (dateToDayIndex(node.date) - minIdx) * pxPerDay;
         }
-        var idx = tl.nodes.indexOf(node);
+        var idx = typeof sortedIdx === 'number' ? sortedIdx : tl.nodes.indexOf(node);
         return EVEN_SPACING_PADDING + idx * evenSpacingPx();
+      }
+
+      // 按 uiPrefs.nodeSort 返回节点渲染顺序副本：asc=按日期正序 / desc=按日期倒序
+      function sortedNodes(tl) {
+        var copy = tl.nodes.slice();
+        var desc = state.uiPrefs && state.uiPrefs.nodeSort === 'desc';
+        copy.sort(function (a, b) {
+          if (a.date === b.date) return 0;
+          return desc ? (a.date < b.date ? 1 : -1) : (a.date < b.date ? -1 : 1);
+        });
+        return copy;
       }
 
       function renderMain() {
@@ -1055,10 +1180,15 @@
         canvas.style.display = 'block';
         laneLabels.style.display = 'block';
 
-        var rulerVisible = isRulerVisible();
+        var singleFit = visible.length === 1;
+        var rulerVisible = isRulerVisible() && !singleFit;
         var minIdx = 0, maxIdx = 0, totalWidth;
 
-        if (rulerVisible) {
+        if (singleFit) {
+          // 单条时间线：折线铺满整个可视宽度，不再按日期向右侧延伸
+          ruler.style.display = 'none';
+          totalWidth = viewport.clientWidth;
+        } else if (rulerVisible) {
           ruler.style.display = 'block';
           var allNodes = [];
           visible.forEach(function (tl) {
@@ -1080,7 +1210,7 @@
         canvas.dataset.minIdx = minIdx;
 
         if (rulerVisible) renderRuler(ruler, minIdx, maxIdx, totalWidth);
-        renderLanes(canvas, visible, minIdx);
+        renderLanes(canvas, visible, minIdx, singleFit);
         renderLaneLabels(visible);
         applyPan();
       }
@@ -1118,7 +1248,7 @@
         });
       }
 
-      function renderLanes(canvas, visible, minIdx) {
+      function renderLanes(canvas, visible, minIdx, singleFit) {
         canvas.innerHTML = '';
         visible.forEach(function (tl, laneIdx) {
           var lane = document.createElement('div');
@@ -1133,19 +1263,90 @@
           baseline.className = 'lane-baseline';
           lane.appendChild(baseline);
 
-          tl.nodes.forEach(function (node) {
-            var x = computeNodeX(tl, node, minIdx);
-            var vOffset = typeof node.vOffset === 'number' ? node.vOffset : (defaultOffsetFor(tl, node) );
+          var orderedNodes = sortedNodes(tl);
+          var n = orderedNodes.length;
+          var W = singleFit ? canvas.offsetWidth : parseFloat(canvas.style.width);
+          var pad = 70;
+
+          // 单线蛇形布局参数：每行最多 maxPerRow 个节点，超过则折返下一行
+          var mpr = Math.max(n, 1);
+          var rows = 1;
+          if (singleFit) {
+            mpr = Math.max(2, Math.min(Math.max(n, 1), Math.floor((W - pad * 2) / 190)));
+            rows = Math.max(1, Math.ceil(Math.max(n, 1) / mpr));
+            canvas.style.height = (rows * LANE_H) + 'px';
+          }
+          function nodePos(i) {
+            if (!singleFit) return null;
+            var row = Math.floor(i / mpr);
+            var col = i % mpr;
+            var rev = row % 2 === 1;
+            var inner = W - pad * 2;
+            var x = mpr === 1 ? W / 2 : rev ? (W - pad - col * inner / (mpr - 1)) : (pad + col * inner / (mpr - 1));
+            return { x: x, y: row * LANE_H + LANE_H / 2 };
+          }
+          function nodeVOffset(node) {
+            return typeof node.vOffset === 'number' ? node.vOffset : defaultOffsetFor(tl, node);
+          }
+
+          // 单线模式：蛇形折线连接相邻节点（带箭头指示流向）
+          if (singleFit && n > 1) {
+            var svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+            svg.setAttribute('class', 'lane-polyline');
+            svg.setAttribute('width', W);
+            svg.setAttribute('height', rows * LANE_H);
+            svg.style.position = 'absolute';
+            svg.style.left = '0';
+            svg.style.top = '0';
+            svg.style.pointerEvents = 'none';
+            svg.style.zIndex = '0';
+            var defs = document.createElementNS('http://www.w3.org/2000/svg', 'defs');
+            var marker = document.createElementNS('http://www.w3.org/2000/svg', 'marker');
+            marker.setAttribute('id', 'lane-arrow');
+            marker.setAttribute('viewBox', '0 0 10 10');
+            marker.setAttribute('refX', '8');
+            marker.setAttribute('refY', '5');
+            marker.setAttribute('markerWidth', '6');
+            marker.setAttribute('markerHeight', '6');
+            marker.setAttribute('orient', 'auto-start-reverse');
+            var arrowPath = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+            arrowPath.setAttribute('d', 'M 0 0 L 10 5 L 0 10 z');
+            arrowPath.setAttribute('fill', 'rgba(96,165,250,0.8)');
+            marker.appendChild(arrowPath);
+            defs.appendChild(marker);
+            svg.appendChild(defs);
+            var pts = [];
+            orderedNodes.forEach(function (node, i) {
+              var p = nodePos(i);
+              pts.push(p.x + ',' + p.y);
+            });
+            var poly = document.createElementNS('http://www.w3.org/2000/svg', 'polyline');
+            poly.setAttribute('points', pts.join(' '));
+            poly.setAttribute('fill', 'none');
+            poly.setAttribute('stroke', 'rgba(96,165,250,0.55)');
+            poly.setAttribute('stroke-width', '2');
+            poly.setAttribute('stroke-linejoin', 'round');
+            poly.setAttribute('marker-end', 'url(#lane-arrow)');
+            svg.appendChild(poly);
+            lane.appendChild(svg);
+          }
+
+          orderedNodes.forEach(function (node, i) {
+            var pos = nodePos(i);
+            var x = pos ? pos.x : computeNodeX(tl, node, minIdx, i);
+            var baseY = pos ? pos.y : LANE_H / 2;
+            var vOffset = nodeVOffset(node);
 
             var dot = document.createElement('div');
             dot.className = 'node-dot';
             dot.style.left = x + 'px';
+            dot.style.top = baseY + 'px';
             dot.style.background = node.color || SENTIMENT_COLOR[node.sentiment] || '#94a3b8';
             lane.appendChild(dot);
 
             var stemTop, stemHeight;
-            if (vOffset < 0) { stemTop = (LANE_H / 2 + vOffset); stemHeight = -vOffset; }
-            else { stemTop = LANE_H / 2; stemHeight = vOffset; }
+            if (vOffset < 0) { stemTop = baseY + vOffset; stemHeight = -vOffset; }
+            else { stemTop = baseY; stemHeight = vOffset; }
             var stem = document.createElement('div');
             stem.className = 'node-stem';
             stem.style.left = x + 'px';
@@ -1153,7 +1354,7 @@
             stem.style.height = Math.max(stemHeight, 0) + 'px';
             lane.appendChild(stem);
 
-            var card = buildCard(tl, node, x, vOffset);
+            var card = buildCard(tl, node, x, vOffset, baseY);
             lane.appendChild(card);
           });
 
@@ -1166,11 +1367,12 @@
         return idx % 2 === 0 ? -46 : 46;
       }
 
-      function buildCard(tl, node, x, vOffset) {
+      function buildCard(tl, node, x, vOffset, baseY) {
         var card = document.createElement('div');
         card.className = 'node-card';
         card.style.left = x + 'px';
-        card.style.top = (LANE_H / 2 + vOffset) + 'px';
+        card.style.top = ((typeof baseY === 'number' ? baseY : LANE_H / 2) + vOffset) + 'px';
+        card.dataset.baseY = (typeof baseY === 'number' ? baseY : LANE_H / 2);
         var accentColor = node.color || SENTIMENT_COLOR[node.sentiment] || '#94a3b8';
         card.style.borderLeftColor = accentColor;
         card.style.background = colorToCardBg(accentColor);
@@ -1179,11 +1381,13 @@
 
         if (node.link) {
           card.classList.add('has-link');
-          card.title = '⌘/Ctrl + 点击 打开链接';
+          card.title = '⌘/Ctrl + 点击 打开链接；点击后按回车可快速添加节点';
           var linkBadge = document.createElement('div');
           linkBadge.className = 'node-link-badge';
           linkBadge.textContent = '🔗';
           card.appendChild(linkBadge);
+        } else {
+          card.title = '点击后按回车可快速添加节点';
         }
 
         var row = document.createElement('div');
@@ -1220,7 +1424,7 @@
         toolbar.className = 'node-toolbar';
 
         var beforeBtn = document.createElement('button');
-        beforeBtn.textContent = '← 前插';
+        beforeBtn.textContent = '←';
         beforeBtn.addEventListener('click', function (e) { e.stopPropagation(); openInsertModal(tl.id, node.id, 'before'); });
 
         var editBtn = document.createElement('button');
@@ -1228,7 +1432,7 @@
         editBtn.addEventListener('click', function (e) { e.stopPropagation(); openEditModal(tl.id, node.id); });
 
         var afterBtn = document.createElement('button');
-        afterBtn.textContent = '后插 →';
+        afterBtn.textContent = '→';
         afterBtn.addEventListener('click', function (e) { e.stopPropagation(); openInsertModal(tl.id, node.id, 'after'); });
 
         var delBtn = document.createElement('button');
@@ -1243,6 +1447,19 @@
         card.appendChild(toolbar);
 
         card.addEventListener('mousedown', onCardMouseDown);
+        card.tabIndex = 0;
+        card.addEventListener('mouseenter', function (e) { showNodeTooltip(card, node, tl); });
+        card.addEventListener('mousemove', positionNodeTooltip);
+        card.addEventListener('mouseleave', hideNodeTooltip);
+        card.addEventListener('focus', function () { card.classList.add('card-focused'); });
+        card.addEventListener('blur', function () { card.classList.remove('card-focused'); });
+        card.addEventListener('keydown', function (e) {
+          if (e.key === 'Enter') {
+            e.preventDefault();
+            e.stopPropagation();
+            openInsertModal(tl.id, node.id, 'after');
+          }
+        });
         card.addEventListener('click', function (e) {
           if (card.dataset.justDragged === '1') { card.dataset.justDragged = ''; return; }
           if ((e.metaKey || e.ctrlKey) && node.link) {
@@ -1253,9 +1470,51 @@
             if (c !== card) c.classList.remove('expanded');
           });
           card.classList.toggle('expanded');
+          card.focus();
         });
 
         return card;
+      }
+
+      // ── 节点悬浮详情 Tooltip ──
+      function showNodeTooltip(card, node, tl) {
+        var tip = document.getElementById('node-tooltip');
+        if (!tip) return;
+        var sent = node.sentiment || 'neutral';
+        var sentimentColor = SENTIMENT_COLOR[sent] || '#94a3b8';
+        var html = '<div class="tt-title">' + (tl.name || '') + ' · ' + escapeHtml(node.title) + '</div>';
+        html += '<div class="tt-meta">';
+        html += '<span class="tt-date">📅 ' + fmtDate(node.date) + '</span>';
+        html += '<span class="tt-sentiment" style="background:' + sentimentColor + '22;color:' + sentimentColor + '">' + (SENTIMENT_LABEL[sent] || '➖ 中性') + '</span>';
+        html += '</div>';
+        if (node.detail) html += '<div class="tt-detail">' + escapeHtml(node.detail) + '</div>';
+        if (node.link) html += '<div class="tt-link">🔗 ' + escapeHtml(node.link) + '</div>';
+        tip.innerHTML = html;
+        tip.style.display = 'block';
+      }
+
+      function positionNodeTooltip(e) {
+        var tip = document.getElementById('node-tooltip');
+        if (!tip || tip.style.display === 'none') return;
+        var pad = 14;
+        var x = e.clientX + pad;
+        var y = e.clientY + pad;
+        var tw = tip.offsetWidth, th = tip.offsetHeight;
+        if (x + tw > window.innerWidth - 8) x = e.clientX - tw - pad;
+        if (y + th > window.innerHeight - 8) y = e.clientY - th - pad;
+        tip.style.left = Math.max(8, x) + 'px';
+        tip.style.top = Math.max(8, y) + 'px';
+      }
+
+      function hideNodeTooltip() {
+        var tip = document.getElementById('node-tooltip');
+        if (tip) tip.style.display = 'none';
+      }
+
+      function escapeHtml(s) {
+        return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) {
+          return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+        });
       }
 
       function renderAll() {
@@ -1269,9 +1528,21 @@
         rulerBtn.classList.toggle('active', !isRulerVisible());
         rulerBtn.textContent = isRulerVisible() ? '🕐 时间刻度' : '🕐 均匀排列';
 
+        var sortBtn = document.getElementById('btn-sort');
+        var desc = state.uiPrefs && state.uiPrefs.nodeSort === 'desc';
+        sortBtn.textContent = desc ? '⬆ 时间倒序' : '⬇ 时间正序';
+        sortBtn.classList.toggle('active', desc);
+
         var collapsed = !!(state.uiPrefs && state.uiPrefs.sidebarCollapsed);
         document.getElementById('sidebar').classList.toggle('collapsed', collapsed);
         document.getElementById('btn-sidebar-toggle').textContent = collapsed ? '»' : '«';
+      }
+
+      function toggleSort() {
+        state.uiPrefs = state.uiPrefs || {};
+        state.uiPrefs.nodeSort = state.uiPrefs.nodeSort === 'desc' ? 'asc' : 'desc';
+        saveState();
+        renderAll();
       }
 
       function toggleRuler() {
@@ -1351,6 +1622,7 @@
           card: card,
           timelineId: card.dataset.timelineId,
           nodeId: card.dataset.nodeId,
+          baseY: parseFloat(card.dataset.baseY || LANE_H / 2),
           startY: e.clientY,
           startTop: parseFloat(card.style.top),
           moved: false
@@ -1362,8 +1634,9 @@
         if (!cardDrag) return;
         var dy = e.clientY - cardDrag.startY;
         if (Math.abs(dy) > 3) cardDrag.moved = true;
+        var baseY = cardDrag.baseY;
         var newTop = cardDrag.startTop + dy;
-        var minTop = 14, maxTop = LANE_H - 14;
+        var minTop = baseY - 62, maxTop = baseY + 62;
         newTop = Math.max(minTop, Math.min(maxTop, newTop));
         cardDrag.card.style.top = newTop + 'px';
 
@@ -1373,9 +1646,9 @@
           return Math.abs(parseFloat(s.style.left) - x) < 0.5;
         });
         if (stem) {
-          var vOffset = newTop - LANE_H / 2;
+          var vOffset = newTop - baseY;
           if (vOffset < 0) { stem.style.top = newTop + 'px'; stem.style.height = (-vOffset) + 'px'; }
-          else { stem.style.top = (LANE_H / 2) + 'px'; stem.style.height = vOffset + 'px'; }
+          else { stem.style.top = baseY + 'px'; stem.style.height = vOffset + 'px'; }
         }
       }
 
@@ -1391,7 +1664,7 @@
           var node = tl && tl.nodes.find(function (n) { return n.id === cardDrag.nodeId; });
           if (node) {
             var top = parseFloat(card.style.top);
-            node.vOffset = top - LANE_H / 2;
+            node.vOffset = top - cardDrag.baseY;
             saveState();
           }
         }
@@ -1652,7 +1925,8 @@
 
       // ---------- GitHub Gist Sync ----------
       function getToken() {
-        return localStorage.getItem(TOKEN_KEY) || '';
+        var t = localStorage.getItem(TOKEN_KEY);
+        return t || DEFAULT_GH_TOKEN;
       }
 
       function setToken(token) {
@@ -1660,9 +1934,13 @@
         else localStorage.removeItem(TOKEN_KEY);
       }
 
+      function getEffectiveGistId() {
+        return (state.syncMeta && state.syncMeta.gistId) || DEFAULT_GIST_ID;
+      }
+
       function openSyncConfigModal() {
         document.getElementById('field-gh-token').value = getToken();
-        document.getElementById('field-gist-id').value = (state.syncMeta && state.syncMeta.gistId) || '';
+        document.getElementById('field-gist-id').value = getEffectiveGistId();
         document.getElementById('sync-modal-overlay').classList.add('show');
       }
 
@@ -1761,7 +2039,7 @@
         syncing = true;
         setSyncButtonBusy(true);
 
-        var gistId = state.syncMeta && state.syncMeta.gistId;
+        var gistId = getEffectiveGistId();
         var flow;
         if (!gistId) {
           flow = ghRequest('POST', '/gists', {
@@ -1813,6 +2091,48 @@
         return files;
       }
 
+      // 仅推送：把本地数据整体上传到远端 Gist（覆盖远端）
+      function pushOnly() {
+        var gistId = getEffectiveGistId();
+        if (!getToken()) { openSyncConfigModal(); return; }
+        if (!gistId) { alert('请先填写 Gist ID 或执行一次“保存并同步”'); return; }
+        setSyncButtonBusy(true);
+        ghRequest('PATCH', '/gists/' + gistId, { files: buildGistFiles(state) }).then(function () {
+          state.syncMeta = state.syncMeta || {};
+          state.syncMeta.lastSyncAt = Date.now();
+          saveState();
+          setSyncButtonBusy(false);
+          showToast('已推送本地数据到云端', 'success');
+        }).catch(function (err) {
+          setSyncButtonBusy(false);
+          showToast('推送失败：' + err.message, 'error');
+        });
+      }
+
+      // 仅拉取：从远端 Gist 拉取并与本地合并（不回推）
+      function pullOnly() {
+        var gistId = getEffectiveGistId();
+        if (!getToken()) { openSyncConfigModal(); return; }
+        if (!gistId) { alert('请先填写 Gist ID 或执行一次“保存并同步”'); return; }
+        setSyncButtonBusy(true);
+        ghRequest('GET', '/gists/' + gistId).then(function (gist) {
+          var file = gist.files && gist.files[GIST_FILENAME];
+          var remoteState = file ? JSON.parse(file.content) : { timelines: [], visibleIds: [] };
+          var merged = mergeState(state, remoteState);
+          state = normalizeState(merged);
+          state.syncMeta = state.syncMeta || {};
+          state.syncMeta.gistId = gistId;
+          state.syncMeta.lastSyncAt = Date.now();
+          saveState();
+          renderAll();
+          setSyncButtonBusy(false);
+          showToast('已拉取并合并远端数据', 'success');
+        }).catch(function (err) {
+          setSyncButtonBusy(false);
+          showToast('拉取失败：' + err.message, 'error');
+        });
+      }
+
       // ---------- Init ----------
       function init() {
         state = loadState();
@@ -1860,6 +2180,7 @@
         document.getElementById('btn-zoom-out').addEventListener('click', function () { zoom(0.8); });
         document.getElementById('btn-zoom-reset').addEventListener('click', fitToData);
         document.getElementById('btn-toggle-ruler').addEventListener('click', toggleRuler);
+        document.getElementById('btn-sort').addEventListener('click', toggleSort);
         document.getElementById('btn-sidebar-toggle').addEventListener('click', toggleSidebar);
 
         document.getElementById('btn-sync').addEventListener('click', function () {
@@ -1867,6 +2188,8 @@
           doSync();
         });
         document.getElementById('btn-sync-config').addEventListener('click', openSyncConfigModal);
+        document.getElementById('btn-sync-pull').addEventListener('click', pullOnly);
+        document.getElementById('btn-sync-push').addEventListener('click', pushOnly);
         document.getElementById('btn-sync-config-cancel').addEventListener('click', closeSyncConfigModal);
         document.getElementById('btn-sync-clear').addEventListener('click', clearSyncConfig);
         document.getElementById('btn-sync-config-save').addEventListener('click', saveSyncConfigAndSync);

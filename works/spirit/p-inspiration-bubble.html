@@ -2435,6 +2435,8 @@
 
       // ---------- 云端同步（GitHub Gist）----------
       const GIST_ID = '46a6da276fee57fd01c48d9fd2ec32a7';
+      // 默认 Token（未在本地配置时使用）
+      const DEFAULT_GITHUB_TOKEN = '';
       const btnCloudSync = document.getElementById('btn-cloud-sync');
       const syncOverlay = document.getElementById('sync-modal-overlay');
       const syncSetupEl = document.getElementById('sync-setup');
@@ -2446,7 +2448,7 @@
       const syncMsg = document.getElementById('sync-msg');
       const syncLastTime = document.getElementById('sync-last-time');
 
-      function getSyncToken() { try { return localStorage.getItem('inspiration-github-token'); } catch(e) { return null; } }
+      function getSyncToken() { try { return localStorage.getItem('inspiration-github-token') || DEFAULT_GITHUB_TOKEN; } catch(e) { return DEFAULT_GITHUB_TOKEN; } }
       function setSyncToken(t) { try { localStorage.setItem('inspiration-github-token', t); } catch(e) {} }
 
       function collectSyncData() {
@@ -2525,6 +2527,7 @@
           syncSetupEl.style.display = '';
           syncPanelEl.style.display = 'none';
         }
+        if (!syncTokenInput.value) syncTokenInput.value = getSyncToken() || '';
         setSyncMsg('');
       }
 
