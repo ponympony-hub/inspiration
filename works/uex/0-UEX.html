@@ -248,9 +248,9 @@
         }
         .sym-link:hover { text-decoration: underline; }
 
-        /* 可点击查看趋势图（成交额/价格/涨跌幅/振幅/市值），继承所在单元格颜色，只用下划线做点击提示 */
+        /* 可点击查看趋势图（成交额/价格/涨跌幅/振幅/市值），暗色下用主题文字色保证可读 */
         .vol-link {
-            color: inherit;
+            color: var(--text-main);
             text-decoration: underline;
             text-decoration-color: var(--border-color);
             cursor: pointer;
@@ -699,6 +699,9 @@
 <!-- ── 标的右键菜单 ── -->
 <div id="rowCtxMenu" class="row-ctx-menu" style="display:none"></div>
 
+<!-- ── 快捷链接右键菜单（编辑 / 删除 / 排序） ── -->
+<div id="quickLinkCtxMenu" class="row-ctx-menu" style="display:none"></div>
+
 <!-- ── 成交额趋势 Modal（默认 60% 视口大小，可拖拽右下角调节） ── -->
 <div id="volModal" class="modal-overlay" style="display:none" onclick="if(event.target===this && !_volResizeActive)closeVolModal()">
     <div class="modal-box resizable" id="volModalBox">
@@ -762,21 +765,50 @@
 
 <!-- ── 快捷链接编辑 Modal ── -->
 <div id="quickLinkEditModal" class="modal-overlay" style="display:none" onclick="if(event.target===this)closeQuickLinkEditModal()">
-    <div class="modal-box" style="width:440px">
+    <div class="modal-box" style="width:460px">
         <div class="modal-header">
             <span>🔗 顶部快捷链接</span>
             <span class="modal-close" onclick="closeQuickLinkEditModal()">✕</span>
         </div>
+        <div class="detail-tip" style="margin-bottom:8px">右键顶栏链接可快速编辑/删除/排序；列表下方 ⇧ ⇩ 也可调整顺序</div>
         <div id="quickLinkEditListBody"></div>
         <div class="quick-link-edit-row">
             <input type="text" id="quickLinkNameInput" placeholder="名称，如: 行情看板" style="width:120px;text-transform:none">
             <input type="text" id="quickLinkUrlInput" placeholder="https://..." style="flex:1;text-transform:none">
-            <button class="sort-btn" onclick="submitQuickLink()">添加</button>
+            <button class="sort-btn" id="quickLinkSubmitBtn" onclick="submitQuickLink()">添加</button>
+            <button class="sort-btn" onclick="cancelQuickLinkEdit()" id="quickLinkCancelBtn" style="display:none">取消</button>
         </div>
     </div>
 </div>
 
 <script>
+    // ── 全局 fetch 限流重试：HTTP 429（Too Many Requests）自动指数退避重试，最多 3 次 ──
+    // 对所有接口统一生效（行情 / K线 / Alpha / Gist 同步），避免限流导致的数据缺失
+    (function () {
+        const __origFetch = window.fetch.bind(window);
+        const MAX_RETRY = 3;
+        window.fetch = async function (url, options) {
+            for (let attempt = 0; ; attempt++) {
+                let resp;
+                try {
+                    resp = await __origFetch(url, options);
+                } catch (e) {
+                    if (attempt >= MAX_RETRY - 1) throw e;
+                    const wait = 500 * Math.pow(2, attempt) + Math.random() * 400;
+                    await new Promise(r => setTimeout(r, wait));
+                    continue;
+                }
+                if (resp.status === 429 && attempt < MAX_RETRY - 1) {
+                    const wait = 800 * Math.pow(2, attempt) + Math.random() * 600;
+                    console.warn('[retry] HTTP 429 限流，' + Math.round(wait) + 'ms 后重试 (' + (attempt + 1) + '/' + (MAX_RETRY - 1) + '): ' + (typeof url === 'string' ? url : String(url)));
+                    await new Promise(r => setTimeout(r, wait));
+                    continue;
+                }
+                return resp;
+            }
+        };
+    })();
+
     // ── 亮/暗主题切换 ────────────────────────────────────────────
     function applyTheme(theme) {
         document.documentElement.setAttribute('data-theme', theme);
@@ -1058,10 +1090,14 @@
     document.addEventListener('click', (e) => {
         const menu = document.getElementById('rowCtxMenu');
         if (menu && menu.style.display !== 'none' && !menu.contains(e.target)) closeRowCtxMenu();
+        const qmenu = document.getElementById('quickLinkCtxMenu');
+        if (qmenu && qmenu.style.display !== 'none' && !qmenu.contains(e.target)) closeQuickLinkCtxMenu();
     });
     document.addEventListener('contextmenu', (e) => {
         const menu = document.getElementById('rowCtxMenu');
         if (menu && menu.style.display !== 'none' && !menu.contains(e.target)) closeRowCtxMenu();
+        const qmenu = document.getElementById('quickLinkCtxMenu');
+        if (qmenu && qmenu.style.display !== 'none' && !qmenu.contains(e.target)) closeQuickLinkCtxMenu();
     });
     document.addEventListener('scroll', closeRowCtxMenu, true);
 
@@ -1603,19 +1639,77 @@
         const bar = document.getElementById('quickLinksBar');
         const links = loadQuickLinks();
         bar.innerHTML = links.length
-            ? links.map(l => `<a class="quick-link-chip" href="${escapeHtml(l.url)}" target="_blank" rel="noopener">${escapeHtml(l.name)}</a>`).join('')
+            ? links.map((l, i) =>
+                `<a class="quick-link-chip" href="${escapeHtml(l.url)}" target="_blank" rel="noopener" ` +
+                `oncontextmenu="openQuickLinkCtxMenu(event, ${i})" title="右键可编辑/排序/删除">${escapeHtml(l.name)}</a>`
+              ).join('')
             : '';
     }
 
-    function openQuickLinkEditModal() {
-        document.getElementById('quickLinkNameInput').value = '';
-        document.getElementById('quickLinkUrlInput').value = '';
+    // ── 快捷链接右键菜单（编辑 / 删除 / 上移 / 下移） ─────────────
+    function openQuickLinkCtxMenu(e, i) {
+        e.preventDefault();
+        e.stopPropagation();
+        closeQuickLinkCtxMenu();
+        const menu = document.getElementById('quickLinkCtxMenu');
+        const links = loadQuickLinks();
+        const l = links[i];
+        if (!l) return;
+        menu.innerHTML =
+            `<div class="ctx-item" onclick="openQuickLinkEditModal(${i});closeQuickLinkCtxMenu()">✏️ 编辑</div>` +
+            (i > 0 ? `<div class="ctx-item" onclick="moveQuickLink(${i}, -1);closeQuickLinkCtxMenu()">⬆️ 上移</div>` : '') +
+            (i < links.length - 1 ? `<div class="ctx-item" onclick="moveQuickLink(${i}, 1);closeQuickLinkCtxMenu()">⬇️ 下移</div>` : '') +
+            `<div class="ctx-item danger" onclick="removeQuickLink(${i});closeQuickLinkCtxMenu()">🗑️ 删除</div>`;
+        menu.style.display = 'block';
+        const menuW = menu.offsetWidth, menuH = menu.offsetHeight;
+        const x = Math.min(e.clientX, window.innerWidth - menuW - 8);
+        const y = Math.min(e.clientY, window.innerHeight - menuH - 8);
+        menu.style.left = x + 'px';
+        menu.style.top = y + 'px';
+    }
+
+    function closeQuickLinkCtxMenu() {
+        document.getElementById('quickLinkCtxMenu').style.display = 'none';
+    }
+
+    function moveQuickLink(index, delta) {
+        const links = loadQuickLinks();
+        const target = index + delta;
+        if (target < 0 || target >= links.length) return;
+        const [item] = links.splice(index, 1);
+        links.splice(target, 0, item);
+        saveQuickLinks(links);
+        renderQuickLinksBar();
+        if (document.getElementById('quickLinkEditModal').style.display === 'flex') renderQuickLinkEditList();
+        autoSyncSettingsToGist();
+    }
+
+    let editingQuickLinkIndex = -1;
+
+    function openQuickLinkEditModal(index) {
+        editingQuickLinkIndex = (typeof index === 'number' && index >= 0) ? index : -1;
+        const links = loadQuickLinks();
+        const editing = editingQuickLinkIndex >= 0 ? links[editingQuickLinkIndex] : null;
+        document.getElementById('quickLinkNameInput').value = editing ? editing.name : '';
+        document.getElementById('quickLinkUrlInput').value = editing ? editing.url : '';
+        document.getElementById('quickLinkSubmitBtn').textContent = editing ? '保存修改' : '添加';
+        document.getElementById('quickLinkCancelBtn').style.display = editing ? 'inline-block' : 'none';
         renderQuickLinkEditList();
         document.getElementById('quickLinkEditModal').style.display = 'flex';
     }
 
+    function cancelQuickLinkEdit() {
+        editingQuickLinkIndex = -1;
+        document.getElementById('quickLinkNameInput').value = '';
+        document.getElementById('quickLinkUrlInput').value = '';
+        document.getElementById('quickLinkSubmitBtn').textContent = '添加';
+        document.getElementById('quickLinkCancelBtn').style.display = 'none';
+        renderQuickLinkEditList();
+    }
+
     function closeQuickLinkEditModal() {
         document.getElementById('quickLinkEditModal').style.display = 'none';
+        cancelQuickLinkEdit();
     }
 
     function renderQuickLinkEditList() {
@@ -1624,9 +1718,12 @@
         body.innerHTML = links.length
             ? links.map((l, i) =>
                 `<div class="quick-link-edit-item">` +
-                `<span class="qle-name">${escapeHtml(l.name)}</span>` +
+                `<span class="qle-order" title="上移/下移" style="cursor:pointer;user-select:none" onclick="moveQuickLink(${i}, -1)">⬆️</span>` +
+                `<span class="qle-order" title="上移/下移" style="cursor:pointer;user-select:none" onclick="moveQuickLink(${i}, 1)">⬇️</span>` +
+                `<span class="qle-name" style="cursor:pointer" title="点击编辑" onclick="openQuickLinkEditModal(${i})">${escapeHtml(l.name)}</span>` +
                 `<span class="qle-url">${escapeHtml(l.url)}</span>` +
-                `<span class="qle-del" onclick="removeQuickLink(${i})">✕ 删除</span>` +
+                `<span class="qle-del" style="cursor:pointer" title="编辑" onclick="openQuickLinkEditModal(${i})">✏️</span>` +
+                `<span class="qle-del" style="cursor:pointer" title="删除" onclick="removeQuickLink(${i})">✕ 删除</span>` +
                 `</div>`
               ).join('')
             : `<div class="note-empty-tip">暂无快捷链接</div>`;
@@ -1640,10 +1737,17 @@
         if (!name || !url) return;
         if (!/^https?:\/\//i.test(url)) url = 'https://' + url;
         const links = loadQuickLinks();
-        links.push({ name, url });
+        if (editingQuickLinkIndex >= 0 && links[editingQuickLinkIndex]) {
+            links[editingQuickLinkIndex] = { name, url };
+        } else {
+            links.push({ name, url });
+        }
         saveQuickLinks(links);
         nameInput.value = '';
         urlInput.value = '';
+        editingQuickLinkIndex = -1;
+        document.getElementById('quickLinkSubmitBtn').textContent = '添加';
+        document.getElementById('quickLinkCancelBtn').style.display = 'none';
         renderQuickLinkEditList();
         renderQuickLinksBar();
         autoSyncSettingsToGist();
@@ -2407,7 +2511,7 @@
             try {
                 const resp = await fetch(
                     `https://www.binance.com/bapi/defi/v1/public/wallet-direct/buw/wallet/cex/alpha/all/token/list`,
-                    { headers: { Accept: 'application/json', clienttype: 'web', Referer: 'https://www.binance.com/zh-CN/alpha' } }
+                    { headers: { Accept: 'application/json' } }
                 );
                 if (!resp.ok) {
                     console.error('[Alpha] token/list HTTP错误', resp.status, resp.statusText);
@@ -2454,7 +2558,7 @@
             const alphaSymbol = `${t.alphaId}USDT`;
             const resp = await fetch(
                 `https://www.binance.com/bapi/defi/v1/public/alpha-trade/klines?symbol=${alphaSymbol}&interval=${interval}&limit=${limit}`,
-                { headers: { Accept: 'application/json', clienttype: 'web', Referer: 'https://www.binance.com/zh-CN/alpha' } }
+                { headers: { Accept: 'application/json' } }
             );
             if (!resp.ok) {
                 console.error('[Alpha] klines HTTP错误', resp.status, resp.statusText);
