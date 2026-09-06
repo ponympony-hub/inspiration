@@ -18,6 +18,20 @@
             --panel-bg: #f8f9fa;
             --hover-bg: #fafbfc;
             --th-bg: #fdfdfd;
+
+            --amp-bg: #fff8e1;
+            --amp-bg-hover: #fff3cd;
+            --amp-text: #7a5b00;
+            --pinned-bg: #eef6ff;
+            --pinned-bg-hover: #e2effe;
+            --chain-bg: #f8f0ff;
+            --chain-bg-hover: #f3e8ff;
+            --chain-border: #d8b4fe;
+            --chain-label-bg: #ede9fe;
+            --chain-label-text: #7c3aed;
+            --chain-label-border: #c4b5fd;
+            --amp-warn-text: #b35c00;
+            --placeholder-text: #999;
         }
 
         html[data-theme="dark"] {
@@ -33,6 +47,20 @@
             --panel-bg: #22252c;
             --hover-bg: #262a32;
             --th-bg: #1f2229;
+
+            --amp-bg: #3d3418;
+            --amp-bg-hover: #4a4020;
+            --amp-text: #ffd873;
+            --pinned-bg: #1c2b40;
+            --pinned-bg-hover: #23374f;
+            --chain-bg: #2a2140;
+            --chain-bg-hover: #34294f;
+            --chain-border: #5b4a8a;
+            --chain-label-bg: #3a2f5c;
+            --chain-label-text: #c4a8ff;
+            --chain-label-border: #5b4a8a;
+            --amp-warn-text: #ffb454;
+            --placeholder-text: #9099a6;
         }
 
         * { box-sizing: border-box; }
@@ -53,7 +81,43 @@
             width: 100%;
         }
 
-        h2 { text-align: center; color: var(--text-main); margin: 0 0 14px; font-size: 18px; }
+        h2 { text-align: center; color: var(--text-main); margin: 0; font-size: 18px; }
+
+        .top-bar {
+            display: grid;
+            grid-template-columns: 1fr auto 1fr;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 14px;
+        }
+        .top-bar-links {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            flex-wrap: wrap;
+            justify-content: flex-start;
+        }
+        .top-bar-actions {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            justify-content: flex-end;
+        }
+        .quick-link-chip {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            padding: 5px 10px;
+            border: 1px solid var(--border-color);
+            border-radius: 14px;
+            font-size: 12px;
+            color: var(--text-main);
+            text-decoration: none;
+            background: var(--panel-bg);
+            white-space: nowrap;
+        }
+        .quick-link-chip:hover { background: var(--hover-bg); border-color: var(--primary-blue); color: var(--primary-blue); }
+        .quick-links-empty-tip { font-size: 12px; color: var(--text-mute); font-style: italic; }
 
         .toolbar {
             display: flex;
@@ -184,21 +248,32 @@
         }
         .sym-link:hover { text-decoration: underline; }
 
+        /* 可点击查看趋势图（成交额/价格/涨跌幅/振幅/市值），继承所在单元格颜色，只用下划线做点击提示 */
+        .vol-link {
+            color: inherit;
+            text-decoration: underline;
+            text-decoration-color: var(--border-color);
+            cursor: pointer;
+        }
+        .vol-link:hover { color: var(--primary-blue); text-decoration-color: var(--primary-blue); }
+
         .price-val { font-size: 14px; font-weight: bold; color: var(--primary-blue); }
         .up   { color: var(--up-color);   font-weight: 600; }
         .down { color: var(--down-color); font-weight: 600; }
-        .neutral { color: var(--text-mute); }
+        .neutral { color: var(--placeholder-text); }
 
         .high-val { color: var(--up-color); }
         .low-val  { color: var(--down-color); }
 
-        tr.amp-highlight td { background: #fff8e1 !important; }
-        tr.amp-highlight:hover td { background: #fff3cd !important; }
+        tr.amp-highlight td { background: var(--amp-bg) !important; }
+        tr.amp-highlight:hover td { background: var(--amp-bg-hover) !important; }
 
-        tr.pinned td { background: #eef6ff !important; }
-        tr.pinned:hover td { background: #e2effe !important; }
+        tr.pinned td { background: var(--pinned-bg) !important; }
+        tr.pinned:hover td { background: var(--pinned-bg-hover) !important; }
 
         .pin-badge { font-size: 11px; }
+        .note-badge { font-size: 11px; cursor: pointer; }
+        .note-badge:hover { opacity: 0.7; }
 
         .refresh-tag {
             text-align: center;
@@ -211,12 +286,12 @@
 
         /* ── 链上子行（嵌入主表格中） ── */
         tr.chain-row td {
-            background: #f8f0ff !important;
+            background: var(--chain-bg) !important;
             font-size: 12px;
             padding: 8px 10px;
-            border-bottom: 1px dashed #d8b4fe;
+            border-bottom: 1px dashed var(--chain-border);
         }
-        tr.chain-row:hover td { background: #f3e8ff !important; }
+        tr.chain-row:hover td { background: var(--chain-bg-hover) !important; }
 
         .chain-inline {
             display: flex;
@@ -230,9 +305,9 @@
             font-size: 10px;
             padding: 1px 5px;
             border-radius: 3px;
-            background: #ede9fe;
-            color: #7c3aed;
-            border: 1px solid #c4b5fd;
+            background: var(--chain-label-bg);
+            color: var(--chain-label-text);
+            border: 1px solid var(--chain-label-border);
             font-weight: 600;
         }
 
@@ -257,6 +332,7 @@
             padding: 18px 20px;
             width: 340px;
             max-width: 90vw;
+            max-height: 90vh;
             box-shadow: 0 8px 30px rgba(0,0,0,0.25);
         }
 
@@ -303,6 +379,165 @@
         #detailBody .detail-row { display: flex; justify-content: space-between; padding: 3px 0; }
         #detailBody .detail-label { color: var(--text-sub); }
         #detailBody .detail-tip { color: var(--text-mute); font-size: 12px; font-style: italic; }
+
+        /* ── 成交额趋势图 ── */
+        .vol-chart-svg { display: block; width: 100%; height: 220px; overflow: visible; }
+        .vol-chart-line { fill: none; stroke: var(--primary-blue); stroke-width: 1.8; }
+        .vol-chart-area { fill: var(--primary-blue); opacity: 0.08; }
+        .vol-chart-axis-text { fill: var(--text-mute); font-size: 10px; }
+        .vol-chart-dot { fill: var(--primary-blue); cursor: pointer; }
+        .vol-chart-dot:hover { fill: var(--down-color); }
+        .vol-chart-grid { stroke: var(--border-color); stroke-width: 1; }
+        .vol-chart-tooltip {
+            position: fixed;
+            pointer-events: none;
+            background: var(--text-main);
+            color: var(--card-bg);
+            font-size: 11px;
+            padding: 4px 8px;
+            border-radius: 4px;
+            white-space: nowrap;
+            transform: translate(-50%, -100%);
+            z-index: 200;
+            display: none;
+        }
+        .vol-chart-wrap { position: relative; }
+        .vol-chart-summary {
+            display: flex;
+            justify-content: space-between;
+            font-size: 12px;
+            color: var(--text-sub);
+            margin-top: 8px;
+        }
+        .vol-chart-summary b { color: var(--text-main); }
+
+        /* ── 成交额趋势 Modal：可调节大小 ── */
+        .modal-box.resizable {
+            display: flex;
+            flex-direction: column;
+            position: relative;
+            resize: none;
+            overflow: hidden;
+        }
+        .modal-box.resizable #volChartBody { flex: 1 1 auto; overflow: auto; }
+        .modal-box.resizable .vol-chart-svg { height: 100%; min-height: 160px; }
+        .modal-box.resizable .vol-chart-wrap { height: calc(100% - 26px); }
+        .modal-resize-handle {
+            position: absolute;
+            right: 0; bottom: 0;
+            width: 18px; height: 18px;
+            cursor: nwse-resize;
+            z-index: 2;
+        }
+        .modal-resize-handle::after {
+            content: '';
+            position: absolute;
+            right: 3px; bottom: 3px;
+            width: 9px; height: 9px;
+            border-right: 2px solid var(--text-mute);
+            border-bottom: 2px solid var(--text-mute);
+            opacity: 0.6;
+        }
+        .modal-resize-handle:hover::after { opacity: 1; border-color: var(--primary-blue); }
+
+        /* ── 笔记功能 ── */
+        .notes-toolbar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 8px;
+            margin-bottom: 10px;
+        }
+        .notes-sync-status { font-size: 11px; color: var(--text-mute); }
+        .notes-sync-status.ok   { color: var(--up-color); }
+        .notes-sync-status.err  { color: var(--down-color); }
+
+        #notesListBody { max-height: 320px; overflow-y: auto; margin-bottom: 10px; }
+        .note-item {
+            padding: 8px 10px;
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            margin-bottom: 6px;
+            font-size: 13px;
+            color: var(--text-main);
+            background: var(--panel-bg);
+        }
+        .note-item-head {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 4px;
+        }
+        .note-item-time { font-size: 11px; color: var(--text-mute); }
+        .note-item-actions { display: flex; gap: 8px; }
+        .note-item-actions span { cursor: pointer; font-size: 11px; color: var(--text-sub); }
+        .note-item-actions span:hover { color: var(--primary-blue); }
+        .note-item-actions span.danger:hover { color: var(--down-color); }
+        .note-item-body { white-space: pre-wrap; word-break: break-word; line-height: 1.5; }
+        .note-item-body textarea {
+            width: 100%;
+            font-size: 13px;
+            font-family: inherit;
+            padding: 6px 8px;
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+            background: var(--card-bg);
+            color: var(--text-main);
+            resize: vertical;
+        }
+        .note-empty-tip { color: var(--text-mute); font-size: 12px; font-style: italic; text-align: center; padding: 16px 0; }
+
+        .note-edit-row { display: flex; gap: 6px; align-items: flex-end; }
+        .note-edit-row textarea {
+            flex: 1;
+            font-size: 13px;
+            font-family: inherit;
+            padding: 6px 8px;
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+            background: var(--card-bg);
+            color: var(--text-main);
+            resize: vertical;
+        }
+
+        .gist-config-body { display: flex; flex-direction: column; gap: 6px; }
+        .gist-field-label { font-size: 12px; color: var(--text-sub); margin-top: 6px; }
+        .gist-config-body input[type="text"] {
+            padding: 6px 8px;
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+            font-size: 12px;
+            background: var(--card-bg);
+            color: var(--text-main);
+        }
+        .gist-config-actions { display: flex; gap: 6px; margin-top: 10px; flex-wrap: wrap; }
+
+        /* ── 快捷链接编辑 ── */
+        #quickLinkEditListBody { max-height: 260px; overflow-y: auto; margin-bottom: 10px; }
+        .quick-link-edit-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 6px 10px;
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            margin-bottom: 6px;
+            font-size: 13px;
+            background: var(--panel-bg);
+        }
+        .quick-link-edit-item .qle-name { font-weight: 600; color: var(--text-main); flex-shrink: 0; }
+        .quick-link-edit-item .qle-url { color: var(--text-sub); flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .quick-link-edit-item .qle-del { cursor: pointer; color: var(--text-mute); font-size: 12px; }
+        .quick-link-edit-item .qle-del:hover { color: var(--down-color); }
+        .quick-link-edit-row { display: flex; gap: 6px; }
+        .quick-link-edit-row input[type="text"] {
+            padding: 6px 8px;
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+            font-size: 12px;
+            background: var(--card-bg);
+            color: var(--text-main);
+        }
 
         /* ── 标的右键菜单 ── */
         .row-ctx-menu {
@@ -406,9 +641,14 @@
 <body>
 
 <div class="container">
-    <div style="display:flex;align-items:center;justify-content:center;gap:10px;position:relative;margin-bottom:14px">
+    <div class="top-bar">
+        <div class="top-bar-links" id="quickLinksBar"></div>
         <h2 style="margin:0">实时行情</h2>
-        <button id="themeToggleBtn" class="sort-btn" style="position:absolute;right:0" onclick="toggleTheme()">🌙 暗色</button>
+        <div class="top-bar-actions">
+            <button class="sort-btn" onclick="openQuickLinkEditModal()">🔗 链接</button>
+            <button class="sort-btn" onclick="openGlobalSyncModal()">☁️ 同步</button>
+            <button id="themeToggleBtn" class="sort-btn" onclick="toggleTheme()">🌙 暗色</button>
+        </div>
     </div>
 
     <!-- ── 交易所行情面板 ── -->
@@ -459,6 +699,83 @@
 <!-- ── 标的右键菜单 ── -->
 <div id="rowCtxMenu" class="row-ctx-menu" style="display:none"></div>
 
+<!-- ── 成交额趋势 Modal（默认 60% 视口大小，可拖拽右下角调节） ── -->
+<div id="volModal" class="modal-overlay" style="display:none" onclick="if(event.target===this && !_volResizeActive)closeVolModal()">
+    <div class="modal-box resizable" id="volModalBox">
+        <div class="modal-header">
+            <span id="volModalTitle"></span>
+            <span class="modal-close" onclick="closeVolModal()">✕</span>
+        </div>
+        <div class="modal-range-group">
+            <label style="font-weight:400;font-size:12px;color:var(--text-sub)">最近</label>
+            <input type="number" id="volCountInput" min="2" max="1000" value="30" style="width:64px" onchange="onVolParamChange()">
+            <select id="volUnitSelect" onchange="onVolParamChange()">
+                <option value="day" selected>天</option>
+                <option value="week">周</option>
+                <option value="month">月</option>
+            </select>
+            <span style="font-size:12px;color:var(--text-mute)">成交额走势</span>
+        </div>
+        <div id="volChartBody">加载中...</div>
+        <div class="modal-resize-handle" onmousedown="startVolModalResize(event)"></div>
+    </div>
+</div>
+
+<!-- ── 笔记 Modal ── -->
+<div id="notesModal" class="modal-overlay" style="display:none" onclick="if(event.target===this)closeNotesModal()">
+    <div class="modal-box" style="width:420px">
+        <div class="modal-header">
+            <span id="notesModalTitle"></span>
+            <span class="modal-close" onclick="closeNotesModal()">✕</span>
+        </div>
+        <div id="notesListBody"></div>
+        <div class="note-edit-row">
+            <textarea id="noteInput" placeholder="添加一条笔记…" rows="2"></textarea>
+            <button class="sort-btn" onclick="submitNoteInput()">保存</button>
+        </div>
+    </div>
+</div>
+
+<!-- ── 全局同步（Gist）Modal：币种列表 / 笔记 / 亮暗主题 / 列显示 / 快捷链接 ── -->
+<div id="gistConfigModal" class="modal-overlay" style="display:none;z-index:110" onclick="if(event.target===this)closeGistConfigModal()">
+    <div class="modal-box" style="width:420px">
+        <div class="modal-header">
+            <span>☁️ 全局同步（GitHub Gist）</span>
+            <span class="modal-close" onclick="closeGistConfigModal()">✕</span>
+        </div>
+        <div class="gist-config-body">
+            <div class="detail-tip" style="margin-bottom:6px">同步范围：币种列表、笔记、亮暗主题、列显示设置、顶部快捷链接</div>
+            <label class="gist-field-label">Personal Access Token（需 gist 权限）</label>
+            <input type="text" id="gistTokenInput" placeholder="ghp_xxxxxxxxxxxx" style="width:100%;text-transform:none">
+            <label class="gist-field-label">Gist ID（留空则首次同步时自动创建）</label>
+            <input type="text" id="gistIdInput" placeholder="留空自动创建" style="width:100%;text-transform:none">
+            <div class="gist-config-actions">
+                <button class="sort-btn" onclick="saveGistConfig()">保存配置</button>
+                <button class="sort-btn" onclick="pushSettingsToGist(true)">立即上传 ⬆️</button>
+                <button class="sort-btn" onclick="pullSettingsFromGist(true)">立即拉取 ⬇️</button>
+            </div>
+            <div id="gistConfigTip" class="detail-tip"></div>
+            <div id="gistConfigStatus" class="notes-sync-status" style="margin-top:4px"></div>
+        </div>
+    </div>
+</div>
+
+<!-- ── 快捷链接编辑 Modal ── -->
+<div id="quickLinkEditModal" class="modal-overlay" style="display:none" onclick="if(event.target===this)closeQuickLinkEditModal()">
+    <div class="modal-box" style="width:440px">
+        <div class="modal-header">
+            <span>🔗 顶部快捷链接</span>
+            <span class="modal-close" onclick="closeQuickLinkEditModal()">✕</span>
+        </div>
+        <div id="quickLinkEditListBody"></div>
+        <div class="quick-link-edit-row">
+            <input type="text" id="quickLinkNameInput" placeholder="名称，如: 行情看板" style="width:120px;text-transform:none">
+            <input type="text" id="quickLinkUrlInput" placeholder="https://..." style="flex:1;text-transform:none">
+            <button class="sort-btn" onclick="submitQuickLink()">添加</button>
+        </div>
+    </div>
+</div>
+
 <script>
     // ── 亮/暗主题切换 ────────────────────────────────────────────
     function applyTheme(theme) {
@@ -472,6 +789,7 @@
         const next = current === 'dark' ? 'light' : 'dark';
         applyTheme(next);
         localStorage.setItem('uex-theme', next);
+        if (typeof autoSyncSettingsToGist === 'function') autoSyncSettingsToGist();
     }
 
     applyTheme(localStorage.getItem('uex-theme') || 'light');
@@ -512,7 +830,7 @@
     // ── 标的列表：每个条目是 { id, sym, exchange }
     //    id = sym + '@' + exchange（唯一键），exchange='' 表示自动
     let rows = [
-    'BOME', 'BCH', 'PEPE', 'ETC', 'RATS', 'TRUMP', 'ENA', 'AAVE', 'XRP',
+    'BOME', 'BCH', 'PEPE', 'ETC', 'RATS', 'TRUMP', 'ENA', 'AAVE', 'XRP', 'ZEC',
     'RSKHY', 'SKHY', 'SKHYNIX', 'DOGE', 'GRAM', 'ONDO', 'MRVL', 'PONS', 'ARB',
     'SHIB', 'PREOPAI', '币安人生', 'OKB', 'ARTX', 'DYDX', 'NVDA', 'SPCX', 'OP',
     'SOL', 'BTC', 'ETH', 'BGB', 'BNB', 'HYPE', 'UNI', 'SUI', 'TSLA', 'AAPL', 'MU', 'SNDK', 'GOOGL'
@@ -616,10 +934,6 @@
         return `<span style="display:inline-block;font-size:10px;font-weight:500;color:${SOURCE_COLOR[src]};background:${SOURCE_BG[src]};border:1px solid ${SOURCE_BORDER[src]};border-radius:3px;padding:1px 5px;vertical-align:middle;line-height:1.4">${label}</span>`;
     }
 
-    // ── 币安 Alpha token/list 缓存：symbol → alphaSymbol ─────────
-    // alphaSymbol 示例: ARTX → ALPHA_474USDT
-    const alphaSymbolMap = {'ARTX': 'ALPHA_474USDT'}; // { 'ARTX': 'ALPHA_474USDT', ... }
-
     // ── 列拖拽排序 ────────────────────────────────────────────────
     let _dragSrcKey = null;
 
@@ -714,7 +1028,7 @@
     // ── 置顶 ──────────────────────────────────────────────────────
     function togglePin(id) {
         const r = rows.find(x => x.id === id);
-        if (r) { r.pinned = !r.pinned; renderTable(); }
+        if (r) { r.pinned = !r.pinned; renderTable(); autoSyncSettingsToGist(); }
     }
 
     // ── 标的右键菜单（置顶 / 删除） ───────────────────────────────
@@ -724,8 +1038,10 @@
         const row = rows.find(r => r.id === id);
         if (!row) return;
         const menu = document.getElementById('rowCtxMenu');
+        const noteCount = getNotes(row.sym).length;
         menu.innerHTML =
             `<div class="ctx-item" onclick="togglePin('${id}');closeRowCtxMenu()">${row.pinned ? '取消置顶' : '置顶'}</div>` +
+            `<div class="ctx-item" onclick="openNotesModal('${row.sym}');closeRowCtxMenu()">笔记${noteCount ? ` (${noteCount})` : ''}</div>` +
             `<div class="ctx-item danger" onclick="removeRow('${id}');closeRowCtxMenu()">删除</div>`;
         menu.style.display = 'block';
         const menuW = menu.offsetWidth, menuH = menu.offsetHeight;
@@ -768,10 +1084,20 @@
         okx: fetchKlineOKX,
         gate: fetchKlineGate,
         mexc: fetchKlineMexc,
+        'binance-chain': fetchKlineBinanceAlpha,
     };
-    const KLINE_UNSUPPORTED = { 'binance-chain': '币安链上标的暂不支持K线详情', us: '美股暂不支持K线详情', hk: '港股暂不支持K线详情', cn: 'A股暂不支持K线详情' };
+    const KLINE_UNSUPPORTED = { us: '美股暂不支持K线详情', hk: '港股暂不支持K线详情', cn: 'A股暂不支持K线详情' };
 
-    function rangeUnitLabel(unit) { return unit === 'month' ? '个月' : '天'; }
+    // ── 各来源K线粒度参数映射（天/周/月） ───────────────────────────
+    const KLINE_GRANULARITY_BITGET_SPOT    = { day: '1day', week: '1week', month: '1M' };
+    const KLINE_GRANULARITY_BITGET_FUTURES = { day: '1D',   week: '1W',    month: '1M' };
+    const KLINE_GRANULARITY_BINANCE        = { day: '1d',   week: '1w',    month: '1M' };
+    const KLINE_GRANULARITY_OKX            = { day: '1D',   week: '1W',    month: '1M' };
+    // Gate.io 无自然周/月粒度K线，用其最大bucket 7d/30d 近似（会与自然周期产生轻微偏差）
+    const KLINE_GRANULARITY_GATE           = { day: '1d',   week: '7d',    month: '30d' };
+    const KLINE_GRANULARITY_ALPHA          = { day: '1d',   week: '1w',    month: '1M' };
+
+    function rangeUnitLabel(unit) { return unit === 'month' ? '个月' : unit === 'week' ? '周' : '天'; }
 
     let detailState = { id: null, unit: 'day', count: 7, custom: false };
 
@@ -879,8 +1205,596 @@
             `<div class="detail-row"><span class="detail-label">区间</span><span>最近 ${stats.count} ${unitLabel}</span></div>` +
             `<div class="detail-row"><span class="detail-label">最高价</span><span class="high-val">${stats.high.toFixed(priceDecimals)}</span></div>` +
             `<div class="detail-row"><span class="detail-label">最低价</span><span class="low-val">${stats.low.toFixed(priceDecimals)}</span></div>` +
-            `<div class="detail-row"><span class="detail-label">振幅</span><span style="font-weight:700;color:#e67e00">${stats.amp.toFixed(2)}%</span></div>` +
+            `<div class="detail-row"><span class="detail-label">振幅</span><span style="font-weight:700;color:var(--amp-warn-text)">${stats.amp.toFixed(2)}%</span></div>` +
             coverageTip;
+    }
+
+    // ── 指标趋势 Modal（点击"价格/涨跌幅/振幅/成交额/市值"单元格弹出，天/周/月可切换，周期数可修改） ──
+    // 每个指标定义：如何从一根K线（结合上一根、上下文）算出该点的值，以及展示用的格式化方式
+    const METRIC_DEFS = {
+        vol:    { label: '成交额', baseline: 0,
+                  extractor: c => c.vol || 0,
+                  fmtVal: v => fmtVol(v), fmtShort: v => fmtVolShort(v) },
+        price:  { label: '价格', baseline: null,
+                  extractor: c => c.close,
+                  fmtVal: v => fmtPrice(v.toFixed(decimalsForPrice(v))), fmtShort: v => fmtPrice(v.toFixed(decimalsForPrice(v))) },
+        change: { label: '涨跌幅', baseline: null, unit: '%',
+                  extractor: (c, i, arr) => {
+                      const prevClose = i === 0 ? c.open : arr[i - 1].close;
+                      return prevClose > 0 ? (c.close - prevClose) / prevClose * 100 : 0;
+                  },
+                  fmtVal: v => v.toFixed(2) + '%', fmtShort: v => v.toFixed(1) + '%' },
+        amp:    { label: '振幅', baseline: 0, unit: '%',
+                  extractor: c => c.open > 0 ? (c.high - c.low) / c.open * 100 : 0,
+                  fmtVal: v => v.toFixed(2) + '%', fmtShort: v => v.toFixed(1) + '%' },
+        mktcap: { label: '市值', baseline: 0, requiresSupply: true,
+                  extractor: (c, i, arr, ctx) => ctx.supply != null ? c.close * ctx.supply / 10000 : null,
+                  fmtVal: v => fmtMktcap(v), fmtShort: v => fmtVolShort(v) },
+    };
+
+    let volModalState = { id: null, metric: 'vol', unit: 'day', count: 30 };
+
+    function openMetricModal(id, metric) {
+        const row = rows.find(r => r.id === id);
+        if (!row || !METRIC_DEFS[metric]) return;
+        volModalState = { id, metric, unit: 'day', count: 30 };
+        document.getElementById('volModalTitle').textContent = `${row.sym} ${METRIC_DEFS[metric].label}趋势`;
+        document.getElementById('volUnitSelect').value = 'day';
+        document.getElementById('volCountInput').value = 30;
+        document.getElementById('volModal').style.display = 'flex';
+        resetVolModalSize();
+        loadMetricChart();
+    }
+
+    function openVolModal(id) { openMetricModal(id, 'vol'); }
+
+    function closeVolModal() {
+        document.getElementById('volModal').style.display = 'none';
+        volModalState = { id: null, metric: 'vol', unit: 'day', count: 30 };
+    }
+
+    // ── 弹窗大小：默认 60% 视口，右下角拖拽调节 ─────────────────────
+    function resetVolModalSize() {
+        const box = document.getElementById('volModalBox');
+        box.style.width  = Math.round(window.innerWidth * 0.6) + 'px';
+        box.style.height = Math.round(window.innerHeight * 0.6) + 'px';
+    }
+
+    let _volResizeStartX = 0, _volResizeStartY = 0, _volResizeStartW = 0, _volResizeStartH = 0;
+    let _volResizeActive = false;
+
+    function startVolModalResize(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        _volResizeActive = true;
+        const box = document.getElementById('volModalBox');
+        _volResizeStartX = e.clientX;
+        _volResizeStartY = e.clientY;
+        _volResizeStartW = box.offsetWidth;
+        _volResizeStartH = box.offsetHeight;
+        document.addEventListener('mousemove', onVolModalResize);
+        document.addEventListener('mouseup', stopVolModalResize);
+    }
+
+    function onVolModalResize(e) {
+        const box = document.getElementById('volModalBox');
+        const minW = 360, minH = 260;
+        const maxW = window.innerWidth * 0.95, maxH = window.innerHeight * 0.95;
+        box.style.width  = Math.max(minW, Math.min(maxW, _volResizeStartW + (e.clientX - _volResizeStartX))) + 'px';
+        box.style.height = Math.max(minH, Math.min(maxH, _volResizeStartH + (e.clientY - _volResizeStartY))) + 'px';
+    }
+
+    function stopVolModalResize(e) {
+        if (e) e.stopPropagation();
+        document.removeEventListener('mousemove', onVolModalResize);
+        document.removeEventListener('mouseup', stopVolModalResize);
+        // 延迟复位，防止本次 mouseup 触发的 overlay click 误关闭弹框
+        setTimeout(() => { _volResizeActive = false; }, 0);
+    }
+
+    function onVolParamChange() {
+        const unit = document.getElementById('volUnitSelect').value;
+        const count = Math.max(2, Math.min(1000, parseInt(document.getElementById('volCountInput').value) || 30));
+        document.getElementById('volCountInput').value = count;
+        volModalState.unit = unit;
+        volModalState.count = count;
+        loadMetricChart();
+    }
+
+    // 市值指标依赖流通量常量（供给量），供给量近似不随时间变化，
+    // 所以市值历史 = 收盘价历史 × 供给量，无需单独的市值数据源
+    function resolveSupply(sym) {
+        return CIRCULATING_SUPPLY[apiSym(sym)] ?? CIRCULATING_SUPPLY[sym] ?? DYNAMIC_SUPPLY[sym] ?? null;
+    }
+
+    async function loadMetricChart() {
+        const { id, metric, unit, count } = volModalState;
+        const row = rows.find(r => r.id === id);
+        const body = document.getElementById('volChartBody');
+        if (!row) return;
+        const metricDef = METRIC_DEFS[metric];
+        body.innerHTML = `<div class="detail-tip">加载中...</div>`;
+
+        const src = resolveDetailSource(row);
+        if (KLINE_UNSUPPORTED[src]) {
+            body.innerHTML = `<div class="detail-tip">${KLINE_UNSUPPORTED[src]}</div>`;
+            return;
+        }
+        const fetcher = KLINE_FETCHERS[src];
+        if (!fetcher) {
+            body.innerHTML = `<div class="detail-tip">该来源暂不支持${metricDef.label}趋势</div>`;
+            return;
+        }
+
+        let supply = null;
+        if (metricDef.requiresSupply) {
+            supply = resolveSupply(row.sym);
+            if (supply == null) {
+                body.innerHTML = `<div class="detail-tip">该标的未配置流通量，无法计算市值趋势</div>`;
+                return;
+            }
+        }
+
+        const s = apiSym(row.sym);
+        const candles = await fetcher(s, unit, count);
+        if (volModalState.id !== id || volModalState.metric !== metric || volModalState.unit !== unit || volModalState.count !== count) return; // 期间用户已切换，丢弃过期结果
+
+        if (!candles || !candles.length) {
+            body.innerHTML = `<div class="detail-tip">查询失败，请稍后重试</div>`;
+            return;
+        }
+
+        const unitLabel = rangeUnitLabel(unit);
+        const coverageTip = candles.length < count
+            ? `<div class="detail-tip">该来源仅返回 ${candles.length} ${unitLabel}数据（请求 ${count} ${unitLabel}）</div>`
+            : '';
+        body.innerHTML = renderMetricChart(candles, unit, metric, { supply }) + coverageTip;
+    }
+
+    function renderMetricChart(candles, unit, metric, ctx = {}) {
+        const metricDef = METRIC_DEFS[metric];
+        const W = 520, H = 220, padL = 46, padR = 10, padT = 14, padB = 26;
+        const innerW = W - padL - padR, innerH = H - padT - padB;
+
+        const values = candles.map((c, i) => metricDef.extractor(c, i, candles, ctx) ?? 0);
+        const dataMax = Math.max(...values);
+        const dataMin = Math.min(...values);
+        const maxVal = metricDef.baseline != null ? Math.max(dataMax, metricDef.baseline) : dataMax;
+        const minVal = metricDef.baseline != null ? metricDef.baseline : dataMin;
+        const span = (maxVal - minVal) || 1;
+
+        const n = candles.length;
+        const stepX = n > 1 ? innerW / (n - 1) : 0;
+        const points = values.map((v, i) => {
+            const x = padL + (n > 1 ? i * stepX : innerW / 2);
+            const y = padT + innerH - (v - minVal) / span * innerH;
+            return { x, y, v };
+        });
+
+        const linePath = points.map((p, i) => `${i === 0 ? 'M' : 'L'}${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(' ');
+        const areaPath = `${linePath} L${points[points.length - 1].x.toFixed(1)},${(padT + innerH).toFixed(1)} L${points[0].x.toFixed(1)},${(padT + innerH).toFixed(1)} Z`;
+
+        // 涨跌幅按最新值正负着色，其余指标统一用主题蓝
+        const lineColorVar = metric === 'change'
+            ? (values[values.length - 1] >= 0 ? 'var(--up-color)' : 'var(--down-color)')
+            : 'var(--primary-blue)';
+
+        // Y 轴网格线（4 条）
+        const gridLines = [0, 1, 2, 3, 4].map(i => {
+            const y = padT + innerH - (i / 4) * innerH;
+            const val = minVal + (i / 4) * span;
+            return `<line class="vol-chart-grid" x1="${padL}" y1="${y.toFixed(1)}" x2="${W - padR}" y2="${y.toFixed(1)}"></line>` +
+                   `<text class="vol-chart-axis-text" x="${(padL - 6).toFixed(1)}" y="${(y + 3).toFixed(1)}" text-anchor="end">${metricDef.fmtShort(val)}</text>`;
+        }).join('');
+
+        // X 轴标签：首、中、末三个时间点
+        const labelIdx = n > 1 ? [0, Math.floor((n - 1) / 2), n - 1] : [0];
+        const xLabels = [...new Set(labelIdx)].map(i => {
+            const p = points[i];
+            return `<text class="vol-chart-axis-text" x="${p.x.toFixed(1)}" y="${(H - 6).toFixed(1)}" text-anchor="middle">${fmtDateForUnit(candles[i].ts, unit)}</text>`;
+        }).join('');
+
+        const dots = points.map((p, i) =>
+            `<circle class="vol-chart-dot" cx="${p.x.toFixed(1)}" cy="${p.y.toFixed(1)}" r="3" ` +
+            `onmousemove="showVolTooltip(event,${i})" onmouseleave="hideVolTooltip()"></circle>`
+        ).join('');
+
+        window._volChartPoints = candles.map((c, i) => ({ ts: c.ts, v: values[i] }));
+        window._volChartMetric = metric;
+
+        const latest = values[values.length - 1];
+        const avg = values.reduce((a, b) => a + b, 0) / n;
+
+        return `<div class="vol-chart-wrap">` +
+            `<svg class="vol-chart-svg" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none">` +
+            gridLines + `<path class="vol-chart-area" d="${areaPath}" style="fill:${lineColorVar};opacity:0.08"></path>` +
+            `<path class="vol-chart-line" d="${linePath}" style="stroke:${lineColorVar}"></path>` + dots + xLabels +
+            `</svg>` +
+            `<div class="vol-chart-tooltip" id="volTooltip"></div>` +
+            `</div>` +
+            `<div class="vol-chart-summary">` +
+            `<span>最新: <b>${metricDef.fmtVal(latest)}</b></span>` +
+            `<span>均值: <b>${metricDef.fmtVal(avg)}</b></span>` +
+            `<span>最高: <b>${metricDef.fmtVal(maxVal)}</b></span>` +
+            `</div>`;
+    }
+
+    function fmtVolShort(v) {
+        if (v >= 10000) return (v / 10000).toFixed(1) + '亿';
+        return v.toFixed(0) + '万';
+    }
+
+    function fmtDateForUnit(ts, unit) {
+        const d = new Date(ts);
+        if (unit === 'month') return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+        return `${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    }
+
+    function showVolTooltip(e, i) {
+        const pt = window._volChartPoints?.[i];
+        if (!pt) return;
+        const tooltip = document.getElementById('volTooltip');
+        if (!tooltip) return;
+        const metricDef = METRIC_DEFS[window._volChartMetric] || METRIC_DEFS.vol;
+        // position:fixed，直接用视口坐标定位，避免被 overflow:auto 的图表容器裁剪
+        const dateStr = new Date(pt.ts).toLocaleDateString();
+        tooltip.textContent = `${dateStr}  ${metricDef.label}: ${metricDef.fmtVal(pt.v)}`;
+        tooltip.style.left = e.clientX + 'px';
+        tooltip.style.top = (e.clientY - 8) + 'px';
+        tooltip.style.display = 'block';
+    }
+
+    function hideVolTooltip() {
+        const tooltip = document.getElementById('volTooltip');
+        if (tooltip) tooltip.style.display = 'none';
+    }
+
+    // ── 笔记功能（按标的 symbol 存储，增删改查 + GitHub Gist 同步） ──
+    const NOTES_STORAGE_KEY = 'uex-notes';
+    const GIST_CONFIG_KEY   = 'uex-gist-config';
+    const GIST_FILENAME     = 'uex-settings.json';
+
+    function loadAllNotes() {
+        try {
+            const raw = localStorage.getItem(NOTES_STORAGE_KEY);
+            return raw ? JSON.parse(raw) : {};
+        } catch { return {}; }
+    }
+
+    function saveAllNotes(all) {
+        localStorage.setItem(NOTES_STORAGE_KEY, JSON.stringify(all));
+    }
+
+    function getNotes(sym) {
+        const all = loadAllNotes();
+        return all[sym] || [];
+    }
+
+
+    function addNote(sym, text) {
+        if (!text || !text.trim()) return;
+        const all = loadAllNotes();
+        if (!all[sym]) all[sym] = [];
+        all[sym].push({ id: 'n' + Date.now() + Math.random().toString(36).slice(2, 6), text: text.trim(), ts: Date.now() });
+        saveAllNotes(all);
+    }
+
+    function updateNote(sym, noteId, text) {
+        const all = loadAllNotes();
+        const list = all[sym] || [];
+        const n = list.find(x => x.id === noteId);
+        if (!n) return;
+        n.text = text.trim();
+        n.ts = Date.now();
+        saveAllNotes(all);
+    }
+
+    function deleteNote(sym, noteId) {
+        const all = loadAllNotes();
+        if (!all[sym]) return;
+        all[sym] = all[sym].filter(x => x.id !== noteId);
+        if (!all[sym].length) delete all[sym];
+        saveAllNotes(all);
+    }
+
+    let notesModalSym = null;
+    let _editingNoteId = null;
+
+    function openNotesModal(sym) {
+        notesModalSym = sym;
+        _editingNoteId = null;
+        document.getElementById('notesModalTitle').textContent = `${sym} 笔记`;
+        document.getElementById('noteInput').value = '';
+        document.getElementById('notesModal').style.display = 'flex';
+        renderNotesList();
+    }
+
+    function closeNotesModal() {
+        document.getElementById('notesModal').style.display = 'none';
+        notesModalSym = null;
+        renderTable(); // 刷新笔记徽标
+    }
+
+    function renderNotesList() {
+        const body = document.getElementById('notesListBody');
+        const notes = getNotes(notesModalSym).slice().sort((a, b) => b.ts - a.ts);
+        if (!notes.length) {
+            body.innerHTML = `<div class="note-empty-tip">暂无笔记，在下方输入并保存</div>`;
+            return;
+        }
+        body.innerHTML = notes.map(n => {
+            const timeStr = new Date(n.ts).toLocaleString();
+            if (_editingNoteId === n.id) {
+                return `<div class="note-item">` +
+                    `<div class="note-item-head"><span class="note-item-time">${timeStr}</span></div>` +
+                    `<div class="note-item-body">` +
+                    `<textarea id="noteEditInput_${n.id}" rows="3">${escapeHtml(n.text)}</textarea>` +
+                    `<div class="note-item-actions" style="margin-top:6px">` +
+                    `<span onclick="saveEditedNote('${n.id}')">✔ 保存</span>` +
+                    `<span onclick="cancelEditNote()">取消</span>` +
+                    `</div></div></div>`;
+            }
+            return `<div class="note-item">` +
+                `<div class="note-item-head">` +
+                `<span class="note-item-time">${timeStr}</span>` +
+                `<div class="note-item-actions">` +
+                `<span onclick="startEditNote('${n.id}')">编辑</span>` +
+                `<span class="danger" onclick="removeNote('${n.id}')">删除</span>` +
+                `</div></div>` +
+                `<div class="note-item-body">${escapeHtml(n.text)}</div>` +
+                `</div>`;
+        }).join('');
+    }
+
+    function escapeHtml(s) {
+        return s.replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+    }
+
+    function submitNoteInput() {
+        const input = document.getElementById('noteInput');
+        const text = input.value;
+        if (!text.trim()) return;
+        addNote(notesModalSym, text);
+        input.value = '';
+        renderNotesList();
+        autoSyncSettingsToGist();
+    }
+
+    function startEditNote(noteId) {
+        _editingNoteId = noteId;
+        renderNotesList();
+    }
+
+    function cancelEditNote() {
+        _editingNoteId = null;
+        renderNotesList();
+    }
+
+    function saveEditedNote(noteId) {
+        const ta = document.getElementById(`noteEditInput_${noteId}`);
+        if (!ta) return;
+        updateNote(notesModalSym, noteId, ta.value);
+        _editingNoteId = null;
+        renderNotesList();
+        autoSyncSettingsToGist();
+    }
+
+    function removeNote(noteId) {
+        deleteNote(notesModalSym, noteId);
+        renderNotesList();
+        autoSyncSettingsToGist();
+    }
+
+    // ── 顶部快捷链接（名称 + URL，可全局同步） ─────────────────────
+    const QUICK_LINKS_KEY = 'uex-quick-links';
+
+    function loadQuickLinks() {
+        try {
+            const raw = localStorage.getItem(QUICK_LINKS_KEY);
+            return raw ? JSON.parse(raw) : [];
+        } catch { return []; }
+    }
+
+    function saveQuickLinks(list) {
+        localStorage.setItem(QUICK_LINKS_KEY, JSON.stringify(list));
+    }
+
+    function renderQuickLinksBar() {
+        const bar = document.getElementById('quickLinksBar');
+        const links = loadQuickLinks();
+        bar.innerHTML = links.length
+            ? links.map(l => `<a class="quick-link-chip" href="${escapeHtml(l.url)}" target="_blank" rel="noopener">${escapeHtml(l.name)}</a>`).join('')
+            : '';
+    }
+
+    function openQuickLinkEditModal() {
+        document.getElementById('quickLinkNameInput').value = '';
+        document.getElementById('quickLinkUrlInput').value = '';
+        renderQuickLinkEditList();
+        document.getElementById('quickLinkEditModal').style.display = 'flex';
+    }
+
+    function closeQuickLinkEditModal() {
+        document.getElementById('quickLinkEditModal').style.display = 'none';
+    }
+
+    function renderQuickLinkEditList() {
+        const body = document.getElementById('quickLinkEditListBody');
+        const links = loadQuickLinks();
+        body.innerHTML = links.length
+            ? links.map((l, i) =>
+                `<div class="quick-link-edit-item">` +
+                `<span class="qle-name">${escapeHtml(l.name)}</span>` +
+                `<span class="qle-url">${escapeHtml(l.url)}</span>` +
+                `<span class="qle-del" onclick="removeQuickLink(${i})">✕ 删除</span>` +
+                `</div>`
+              ).join('')
+            : `<div class="note-empty-tip">暂无快捷链接</div>`;
+    }
+
+    function submitQuickLink() {
+        const nameInput = document.getElementById('quickLinkNameInput');
+        const urlInput = document.getElementById('quickLinkUrlInput');
+        const name = nameInput.value.trim();
+        let url = urlInput.value.trim();
+        if (!name || !url) return;
+        if (!/^https?:\/\//i.test(url)) url = 'https://' + url;
+        const links = loadQuickLinks();
+        links.push({ name, url });
+        saveQuickLinks(links);
+        nameInput.value = '';
+        urlInput.value = '';
+        renderQuickLinkEditList();
+        renderQuickLinksBar();
+        autoSyncSettingsToGist();
+    }
+
+    function removeQuickLink(index) {
+        const links = loadQuickLinks();
+        links.splice(index, 1);
+        saveQuickLinks(links);
+        renderQuickLinkEditList();
+        renderQuickLinksBar();
+        autoSyncSettingsToGist();
+    }
+
+    // ── GitHub Gist 全局同步（币种列表 / 笔记 / 主题 / 列显示 / 快捷链接） ──
+    function loadGistConfig() {
+        try {
+            const raw = localStorage.getItem(GIST_CONFIG_KEY);
+            return raw ? JSON.parse(raw) : { token: '', gistId: '' };
+        } catch { return { token: '', gistId: '' }; }
+    }
+
+    function saveGistConfigObj(cfg) {
+        localStorage.setItem(GIST_CONFIG_KEY, JSON.stringify(cfg));
+    }
+
+    function openGlobalSyncModal() {
+        const cfg = loadGistConfig();
+        document.getElementById('gistTokenInput').value = cfg.token || '';
+        document.getElementById('gistIdInput').value = cfg.gistId || '';
+        document.getElementById('gistConfigTip').textContent = '';
+        document.getElementById('gistConfigModal').style.display = 'flex';
+        renderGistSyncStatus();
+    }
+
+    function closeGistConfigModal() {
+        document.getElementById('gistConfigModal').style.display = 'none';
+    }
+
+    function renderGistSyncStatus() {
+        const cfg = loadGistConfig();
+        const el = document.getElementById('gistConfigStatus');
+        if (!el) return;
+        el.textContent = cfg.token ? (cfg.gistId ? `已配置，Gist ID: ${cfg.gistId}` : '已配置 Token，尚未创建 Gist') : '未配置同步';
+        el.className = 'notes-sync-status' + (cfg.token ? ' ok' : '');
+    }
+
+    function saveGistConfig() {
+        const token = document.getElementById('gistTokenInput').value.trim();
+        const gistId = document.getElementById('gistIdInput').value.trim();
+        saveGistConfigObj({ token, gistId });
+        document.getElementById('gistConfigTip').textContent = '配置已保存';
+        renderGistSyncStatus();
+    }
+
+    function gistHeaders(token) {
+        return { Authorization: `token ${token}`, Accept: 'application/vnd.github+json', 'Content-Type': 'application/json' };
+    }
+
+    // ── 全量设置的序列化 / 应用 ─────────────────────────────────────
+    function serializeSettings() {
+        return {
+            rows: rows.map(r => ({ sym: r.sym, exchange: r.exchange, pinned: !!r.pinned })),
+            visibleCols,
+            customCols: CUSTOM_COLS,
+            theme: localStorage.getItem('uex-theme') || 'light',
+            notes: loadAllNotes(),
+            quickLinks: loadQuickLinks(),
+        };
+    }
+
+    function applySettings(settings) {
+        if (!settings) return;
+        if (Array.isArray(settings.rows)) {
+            rows = settings.rows.map(r => ({ id: r.sym + '@' + (r.exchange || 'auto') + '_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6), sym: r.sym, exchange: r.exchange || '', pinned: !!r.pinned }));
+        }
+        if (Array.isArray(settings.visibleCols)) visibleCols = settings.visibleCols;
+        if (Array.isArray(settings.customCols)) {
+            CUSTOM_COLS = settings.customCols;
+            customColSeq = CUSTOM_COLS.reduce((max, c) => {
+                const n = parseInt((c.key || '').replace('custom_', ''), 10);
+                return isNaN(n) ? max : Math.max(max, n + 1);
+            }, 1);
+        }
+        if (settings.theme) { applyTheme(settings.theme); localStorage.setItem('uex-theme', settings.theme); }
+        if (settings.notes) saveAllNotes(settings.notes);
+        if (Array.isArray(settings.quickLinks)) saveQuickLinks(settings.quickLinks);
+
+        renderHeader();
+        renderTable();
+        renderQuickLinksBar();
+        cache && Object.keys(cache).forEach(k => delete cache[k]);
+        fetchAll();
+    }
+
+    async function pushSettingsToGist(showTip) {
+        const cfg = loadGistConfig();
+        const tip = document.getElementById('gistConfigTip');
+        if (!cfg.token) { if (showTip) tip.textContent = '请先填写 Token'; return; }
+        const content = JSON.stringify(serializeSettings(), null, 2);
+        try {
+            if (cfg.gistId) {
+                const resp = await fetch(`https://api.github.com/gists/${cfg.gistId}`, {
+                    method: 'PATCH',
+                    headers: gistHeaders(cfg.token),
+                    body: JSON.stringify({ files: { [GIST_FILENAME]: { content } } }),
+                });
+                if (!resp.ok) throw new Error('HTTP ' + resp.status);
+                if (showTip) tip.textContent = '上传成功';
+            } else {
+                const resp = await fetch(`https://api.github.com/gists`, {
+                    method: 'POST',
+                    headers: gistHeaders(cfg.token),
+                    body: JSON.stringify({ description: 'UEX 全局设置同步', public: false, files: { [GIST_FILENAME]: { content } } }),
+                });
+                if (!resp.ok) throw new Error('HTTP ' + resp.status);
+                const json = await resp.json();
+                cfg.gistId = json.id;
+                saveGistConfigObj(cfg);
+                document.getElementById('gistIdInput').value = cfg.gistId;
+                if (showTip) tip.textContent = '已创建新 Gist 并上传成功';
+            }
+            renderGistSyncStatus();
+        } catch (e) {
+            if (showTip) tip.textContent = '上传失败: ' + e.message;
+        }
+    }
+
+    async function pullSettingsFromGist(showTip) {
+        const cfg = loadGistConfig();
+        const tip = document.getElementById('gistConfigTip');
+        if (!cfg.token) { if (showTip) tip.textContent = '请先填写 Token'; return; }
+        if (!cfg.gistId) { if (showTip) tip.textContent = '暂无 Gist ID，请先上传一次'; return; }
+        try {
+            const resp = await fetch(`https://api.github.com/gists/${cfg.gistId}`, { headers: gistHeaders(cfg.token) });
+            if (!resp.ok) throw new Error('HTTP ' + resp.status);
+            const json = await resp.json();
+            const file = json.files?.[GIST_FILENAME];
+            if (!file) throw new Error('Gist 中未找到设置文件');
+            const remoteSettings = JSON.parse(file.content);
+            applySettings(remoteSettings);
+            if (showTip) tip.textContent = '拉取成功';
+            if (notesModalSym) renderNotesList();
+        } catch (e) {
+            if (showTip) tip.textContent = '拉取失败: ' + e.message;
+        }
+    }
+
+    function autoSyncSettingsToGist() {
+        const cfg = loadGistConfig();
+        if (cfg.token) pushSettingsToGist(false);
     }
 
     // ── 列删除 ───────────────────────────────────────────────────
@@ -932,6 +1846,7 @@
         }
         renderHeader();
         renderTable();
+        autoSyncSettingsToGist();
     }
 
     function addCustomPriceCol() {
@@ -941,6 +1856,7 @@
         renderColPanel();
         renderHeader();
         renderTable();
+        autoSyncSettingsToGist();
     }
 
     function updateCustomCoef(key, val) {
@@ -952,6 +1868,7 @@
         renderColPanel();
         renderHeader();
         renderTable();
+        autoSyncSettingsToGist();
     }
 
     function setCustomHeaderColor(key, color) {
@@ -968,6 +1885,7 @@
         renderColPanel();
         renderHeader();
         renderTable();
+        autoSyncSettingsToGist();
     }
 
     function toggleColPanel(e) {
@@ -1030,6 +1948,7 @@
             const detailBtn = `<button class="sort-btn" style="padding:2px 8px;font-size:11px;flex-shrink:0" onclick="openDetail('${id}')">详情</button>`;
             const ctxAttr = `oncontextmenu="openRowCtxMenu(event,'${id}')"`;
             const pinBadge = pinned ? `<span class="pin-badge" title="已置顶">📌</span>` : '';
+            const noteBadge = getNotes(sym).length ? `<span class="note-badge" title="有笔记，点击查看" onclick="event.stopPropagation();openNotesModal('${sym}')">📝</span>` : '';
 
             // 链上行：单独一行展示链上详情
             if (exchange === 'binance-chain' || src === 'binance-chain') {
@@ -1043,6 +1962,7 @@
                         `<div class="chain-inline" ${ctxAttr}>` +
                         `${pinBadge}` +
                         `<a class="sym-link" href="${alphaUrl}" target="_blank" rel="noopener">${sym}</a>` +
+                        `${noteBadge}` +
                         `<span class="chain-inline-label">链上</span>` +
                         `<span class="chain-inline-loading">查询中...</span>` +
                         `${detailBtn}` +
@@ -1052,17 +1972,18 @@
                 const changeClass = d.change > 0 ? 'up' : d.change < 0 ? 'down' : 'neutral';
                 const changeStr = (d.change > 0 ? '+' : '') + d.change.toFixed(2) + '%';
                 const extraFields = [];
-                if (d.vol > 0)    extraFields.push(`成交额: <b>${fmtVol(d.vol)}万$</b>`);
+                if (d.vol > 0)    extraFields.push(`成交额: <b>${fmtVol(d.vol)}$</b>`);
                 if (d.high)       extraFields.push(`最高: <b class="high-val">${fmtPrice(d.high)}</b>`);
                 if (d.low)        extraFields.push(`最低: <b class="low-val">${fmtPrice(d.low)}</b>`);
-                if (d.mktcap)     extraFields.push(`市值: <b>${fmtMktcap(d.mktcap)}万$</b>`);
+                if (d.mktcap)     extraFields.push(`市值: <b>${fmtMktcap(d.mktcap)}$</b>`);
                 if (d.liquidity)  extraFields.push(`流动性: <b>$${fmtNum(d.liquidity)}</b>`);
-                if (d.alphaSymbol) extraFields.push(`Alpha: <b style="color:#7c3aed">${d.alphaSymbol}</b>`);
+                if (d.alphaSymbol) extraFields.push(`Alpha: <b style="color:var(--chain-label-text)">${d.alphaSymbol}</b>`);
 
                 return `<tr class="chain-row${pinned ? ' pinned' : ''}"><td colspan="${visibleCols.length}">` +
                     `<div class="chain-inline" ${ctxAttr}>` +
                     `${pinBadge}` +
                     `<a class="sym-link" href="${alphaUrl}" target="_blank" rel="noopener">${sym}</a>` +
+                    `${noteBadge}` +
                     `<span class="chain-inline-label">链上</span>` +
                     `<span class="price-val" style="font-size:13px">$${fmtPrice(d.price)}</span>` +
                     `<span class="${changeClass}" style="font-size:12px">${changeStr}</span>` +
@@ -1088,12 +2009,12 @@
                 }
 
                 if (!d) {
-                    if (key === 'symbol') return `<td title="${title}"><div class="symbol-cell" ${ctxAttr}>${pinBadge}<a class="sym-link" href="${chartUrl}" target="_blank" rel="noopener">${sym}</a>${exchange ? srcTag(exchange) : ''}</div></td>`;
+                    if (key === 'symbol') return `<td title="${title}"><div class="symbol-cell" ${ctxAttr}>${pinBadge}<a class="sym-link" href="${chartUrl}" target="_blank" rel="noopener">${sym}</a>${noteBadge}${exchange ? srcTag(exchange) : ''}</div></td>`;
                     return `<td class="neutral" title="${title}">--</td>`;
                 }
 
                 if (key === 'symbol') {
-                    return `<td title="${title}"><div class="symbol-cell" ${ctxAttr}>${pinBadge}<a class="sym-link" href="${chartUrl}" target="_blank" rel="noopener">${sym}</a>${srcTag(src)}</div></td>`;
+                    return `<td title="${title}"><div class="symbol-cell" ${ctxAttr}>${pinBadge}<a class="sym-link" href="${chartUrl}" target="_blank" rel="noopener">${sym}</a>${noteBadge}${srcTag(src)}</div></td>`;
                 }
 
                 if (key === 'price') {
@@ -1105,22 +2026,22 @@
                             `资金费 <span class="${frClass}">${frSign}${d.capitalRate}%</span>` +
                             `</div>`;
                     }
-                    return `<td class="price-val" title="${title}">${fmtPrice(d.price)}${extra}</td>`;
+                    return `<td class="price-val" title="点击查看价格趋势"><span class="vol-link" onclick="openMetricModal('${id}','price')">${fmtPrice(d.price)}</span>${extra}</td>`;
                 }
 
                 if (key === 'change') {
                     const cls = d.change > 0 ? 'up' : d.change < 0 ? 'down' : 'neutral';
                     const str = (d.change > 0 ? '+' : '') + d.change.toFixed(2) + '%';
-                    return `<td class="${cls}" title="${title}">${str}</td>`;
+                    return `<td class="${cls}" title="点击查看涨跌幅趋势"><span class="vol-link" onclick="openMetricModal('${id}','change')">${str}</span></td>`;
                 }
 
                 if (key === 'amp') {
-                    const ampCls = d.amp > 10 ? ' style="font-weight:700;color:#e67e00"' : '';
-                    return `<td${ampCls} title="${title}">${d.amp.toFixed(2)}%</td>`;
+                    const ampCls = d.amp > 10 ? ' style="font-weight:700;color:var(--amp-warn-text)"' : '';
+                    return `<td${ampCls} title="点击查看振幅趋势"><span class="vol-link" onclick="openMetricModal('${id}','amp')">${d.amp.toFixed(2)}%</span></td>`;
                 }
 
-                if (key === 'vol')    return `<td title="${title}">${fmtVol(d.vol)}</td>`;
-                if (key === 'mktcap') return `<td title="${title}">${fmtMktcap(d.mktcap)}</td>`;
+                if (key === 'vol')    return `<td title="点击查看成交额趋势"><span class="vol-link" onclick="openMetricModal('${id}','vol')">${fmtVol(d.vol)}</span></td>`;
+                if (key === 'mktcap') return `<td title="点击查看市值趋势"><span class="vol-link" onclick="openMetricModal('${id}','mktcap')">${fmtMktcap(d.mktcap)}</span></td>`;
                 if (key === 'high')   return `<td class="high-val" title="${title}">${fmtPrice(d.high)}</td>`;
                 if (key === 'low')    return `<td class="low-val" title="${title}">${fmtPrice(d.low)}</td>`;
 
@@ -1376,13 +2297,13 @@
 
     async function fetchKlineBitgetSpot(s, unit, count) {
         try {
-            const granularity = unit === 'month' ? '1M' : '1day';
+            const granularity = KLINE_GRANULARITY_BITGET_SPOT[unit] || '1day';
             const limit = Math.min(count, 200);
             const resp = await fetch(`https://api.bitget.com/api/v2/spot/market/candles?symbol=${s}USDT&granularity=${granularity}&limit=${limit}`);
             const json = await resp.json();
             if (json.code === '00000' && Array.isArray(json.data)) {
                 return json.data
-                    .map(row => ({ ts: +row[0], open: parseFloat(row[1]), high: parseFloat(row[2]), low: parseFloat(row[3]), close: parseFloat(row[4]) }))
+                    .map(row => ({ ts: +row[0], open: parseFloat(row[1]), high: parseFloat(row[2]), low: parseFloat(row[3]), close: parseFloat(row[4]), vol: parseFloat(row[6]) / 10000 }))
                     .sort((a, b) => a.ts - b.ts);
             }
         } catch {}
@@ -1391,13 +2312,13 @@
 
     async function fetchKlineBitgetFutures(s, unit, count) {
         try {
-            const granularity = unit === 'month' ? '1M' : '1D';
+            const granularity = KLINE_GRANULARITY_BITGET_FUTURES[unit] || '1D';
             const limit = Math.min(count, 200);
             const resp = await fetch(`https://api.bitget.com/api/v2/mix/market/candles?symbol=${s}USDT&productType=USDT-FUTURES&granularity=${granularity}&limit=${limit}`);
             const json = await resp.json();
             if (json.code === '00000' && Array.isArray(json.data)) {
                 return json.data
-                    .map(row => ({ ts: +row[0], open: parseFloat(row[1]), high: parseFloat(row[2]), low: parseFloat(row[3]), close: parseFloat(row[4]) }))
+                    .map(row => ({ ts: +row[0], open: parseFloat(row[1]), high: parseFloat(row[2]), low: parseFloat(row[3]), close: parseFloat(row[4]), vol: parseFloat(row[6]) / 10000 }))
                     .sort((a, b) => a.ts - b.ts);
             }
         } catch {}
@@ -1406,13 +2327,13 @@
 
     async function fetchKlineBinance(s, unit, count) {
         try {
-            const interval = unit === 'month' ? '1M' : '1d';
+            const interval = KLINE_GRANULARITY_BINANCE[unit] || '1d';
             const limit = Math.min(count, 1000);
             const resp = await fetch(`https://api.binance.com/api/v3/klines?symbol=${s}USDT&interval=${interval}&limit=${limit}`);
             const json = await resp.json();
             if (Array.isArray(json) && json.length) {
                 return json
-                    .map(row => ({ ts: +row[0], open: parseFloat(row[1]), high: parseFloat(row[2]), low: parseFloat(row[3]), close: parseFloat(row[4]) }))
+                    .map(row => ({ ts: +row[0], open: parseFloat(row[1]), high: parseFloat(row[2]), low: parseFloat(row[3]), close: parseFloat(row[4]), vol: parseFloat(row[7]) / 10000 }))
                     .sort((a, b) => a.ts - b.ts);
             }
         } catch {}
@@ -1421,13 +2342,13 @@
 
     async function fetchKlineMexc(s, unit, count) {
         try {
-            const interval = unit === 'month' ? '1M' : '1d';
+            const interval = KLINE_GRANULARITY_BINANCE[unit] || '1d';
             const limit = Math.min(count, 1000);
             const resp = await fetch(`https://api.mexc.com/api/v3/klines?symbol=${s}USDT&interval=${interval}&limit=${limit}`);
             const json = await resp.json();
             if (Array.isArray(json) && json.length) {
                 return json
-                    .map(row => ({ ts: +row[0], open: parseFloat(row[1]), high: parseFloat(row[2]), low: parseFloat(row[3]), close: parseFloat(row[4]) }))
+                    .map(row => ({ ts: +row[0], open: parseFloat(row[1]), high: parseFloat(row[2]), low: parseFloat(row[3]), close: parseFloat(row[4]), vol: parseFloat(row[7]) / 10000 }))
                     .sort((a, b) => a.ts - b.ts);
             }
         } catch {}
@@ -1436,14 +2357,14 @@
 
     async function fetchKlineOKX(s, unit, count) {
         try {
-            const bar = unit === 'month' ? '1M' : '1D';
+            const bar = KLINE_GRANULARITY_OKX[unit] || '1D';
             const limit = Math.min(count, 300);
             const resp = await fetch(`https://www.okx.com/api/v5/market/candles?instId=${s}-USDT&bar=${bar}&limit=${limit}`);
             const json = await resp.json();
             if (json.code === '0' && Array.isArray(json.data) && json.data.length) {
                 // OKX 返回按时间倒序（最新在前），统一升序整理
                 return json.data
-                    .map(row => ({ ts: +row[0], open: parseFloat(row[1]), high: parseFloat(row[2]), low: parseFloat(row[3]), close: parseFloat(row[4]) }))
+                    .map(row => ({ ts: +row[0], open: parseFloat(row[1]), high: parseFloat(row[2]), low: parseFloat(row[3]), close: parseFloat(row[4]), vol: parseFloat(row[6]) / 10000 }))
                     .sort((a, b) => a.ts - b.ts);
             }
         } catch {}
@@ -1452,15 +2373,15 @@
 
     async function fetchKlineGate(s, unit, count) {
         try {
-            // Gate.io 无自然月粒度，月单位用其最大bucket 30d 近似（会与自然月产生轻微偏差）
-            const interval = unit === 'month' ? '30d' : '1d';
+            // Gate.io 无自然周/月粒度，周/月单位用其最大bucket 7d/30d 近似（会与自然周期产生轻微偏差）
+            const interval = KLINE_GRANULARITY_GATE[unit] || '1d';
             const limit = Math.min(count, 1000);
             const resp = await fetch(`https://api.gateio.ws/api/v4/spot/candlesticks?currency_pair=${s}_USDT&interval=${interval}&limit=${limit}`);
             const json = await resp.json();
             if (Array.isArray(json) && json.length) {
                 // Gate 字段顺序: [timestamp, quoteVolume, close, high, low, open, baseVolume]
                 return json
-                    .map(row => ({ ts: +row[0] * 1000, open: parseFloat(row[5]), high: parseFloat(row[3]), low: parseFloat(row[4]), close: parseFloat(row[2]) }))
+                    .map(row => ({ ts: +row[0] * 1000, open: parseFloat(row[5]), high: parseFloat(row[3]), low: parseFloat(row[4]), close: parseFloat(row[2]), vol: parseFloat(row[1]) / 10000 }))
                     .sort((a, b) => a.ts - b.ts);
             }
         } catch {}
@@ -1468,25 +2389,115 @@
     }
 
     // ── 币安链上 Alpha Trade ───────────────────────────────────────
-    // 流程：先用 token/list 找 alphaSymbol，再用 ticker 接口拿价格
-    async function fetchBinanceChain(id, s) {
-        const alphaSymbol = alphaSymbolMap[s];
+    // 流程：先拉取全量 token list（带缓存，避免每个标的各发一次全量请求），
+    // 按 symbol 匹配到对应 token（含 alphaId + 完整行情字段），无需额外调用 ticker 接口
+    const ALPHA_TOKEN_LIST_TTL = 30000; // 列表体量大，30s 缓存足够新鲜同时避免频繁全量请求
+    let alphaTokenListCache = null;
+    let alphaTokenListCacheTime = 0;
+    let alphaTokenListPromise = null;
 
+    async function getAlphaTokenList() {
+        const now = Date.now();
+        if (alphaTokenListCache && now - alphaTokenListCacheTime < ALPHA_TOKEN_LIST_TTL) {
+            return alphaTokenListCache;
+        }
+        if (alphaTokenListPromise) return alphaTokenListPromise;
+
+        alphaTokenListPromise = (async () => {
+            try {
+                const resp = await fetch(
+                    `https://www.binance.com/bapi/defi/v1/public/wallet-direct/buw/wallet/cex/alpha/all/token/list`,
+                    { headers: { Accept: 'application/json', clienttype: 'web', Referer: 'https://www.binance.com/zh-CN/alpha' } }
+                );
+                if (!resp.ok) {
+                    console.error('[Alpha] token/list HTTP错误', resp.status, resp.statusText);
+                    return alphaTokenListCache || new Map();
+                }
+                const json = await resp.json();
+                if (json.code && json.code !== '000000') {
+                    console.error('[Alpha] token/list 业务错误', json.code, json.message, json.messageDetail);
+                }
+                if (Array.isArray(json.data)) {
+                    const map = new Map();
+                    json.data.forEach(t => {
+                        if (t.symbol) map.set(t.symbol.toUpperCase(), t);
+                    });
+                    alphaTokenListCache = map;
+                    alphaTokenListCacheTime = Date.now();
+                    console.log(`[Alpha] token/list 拉取成功，共 ${map.size} 个代币`);
+                } else {
+                    console.error('[Alpha] token/list 响应格式异常，data 不是数组:', json);
+                }
+            } catch (e) {
+                console.error('[Alpha] token/list 请求异常（可能是 CORS 或网络问题）:', e);
+            }
+            return alphaTokenListCache || new Map();
+        })();
+
+        const result = await alphaTokenListPromise;
+        alphaTokenListPromise = null;
+        return result;
+    }
+
+    // Alpha K线接口需要 alphaId+计价资产 拼成的 symbol（如 ALPHA_175USDT），
+    // token/list 本身不直接给出计价资产，按官方文档示例统一用 USDT 试
+    async function fetchKlineBinanceAlpha(s, unit, count) {
         try {
+            const list = await getAlphaTokenList();
+            const t = list.get(s.toUpperCase());
+            if (!t || !t.alphaId) {
+                console.warn(`[Alpha] K线：未找到 symbol="${s}" 对应的 alphaId`);
+                return null;
+            }
+            const interval = KLINE_GRANULARITY_ALPHA[unit] || '1d';
+            const limit = Math.min(count, 1500);
+            const alphaSymbol = `${t.alphaId}USDT`;
             const resp = await fetch(
-                `https://www.binance.com/bapi/defi/v1/public/alpha-trade/ticker?symbol=${alphaSymbol}`,
+                `https://www.binance.com/bapi/defi/v1/public/alpha-trade/klines?symbol=${alphaSymbol}&interval=${interval}&limit=${limit}`,
                 { headers: { Accept: 'application/json', clienttype: 'web', Referer: 'https://www.binance.com/zh-CN/alpha' } }
             );
+            if (!resp.ok) {
+                console.error('[Alpha] klines HTTP错误', resp.status, resp.statusText);
+                return null;
+            }
             const json = await resp.json();
-            // 响应结构：{ data: { lastPrice, priceChangePercent, volume, quoteVolume, highPrice, lowPrice, ... } }
-            const d = json?.data || json;
-            const price  = parseFloat(d.lastPrice || d.price || d.c || 0);
-            const open   = parseFloat(d.openPrice || d.prevClosePrice || d.o || 0);
-            const high   = parseFloat(d.highPrice || d.h || 0);
-            const low    = parseFloat(d.lowPrice  || d.l || 0);
-            const vol    = parseFloat(d.quoteVolume || d.volume || d.v || 0);
-            const chg    = parseFloat(d.priceChangePercent || d.P || 0);
-            const liquidity = parseFloat(d.liquidity || d.tvl || 0);
+            if (json.code && json.code !== '000000') {
+                console.error('[Alpha] klines 业务错误', json.code, json.message, json.messageDetail);
+                return null;
+            }
+            if (Array.isArray(json.data) && json.data.length) {
+                // 字段顺序: 开盘时间, 开盘价, 最高价, 最低价, 收盘价, 成交量, 收盘时间, 计价成交量, 成交笔数, ...
+                return json.data
+                    .map(row => ({ ts: +row[0], open: parseFloat(row[1]), high: parseFloat(row[2]), low: parseFloat(row[3]), close: parseFloat(row[4]), vol: parseFloat(row[7]) / 10000 }))
+                    .sort((a, b) => a.ts - b.ts);
+            }
+        } catch (e) {
+            console.error(`[Alpha] fetchKlineBinanceAlpha("${s}") 异常:`, e);
+        }
+        return null;
+    }
+
+    async function fetchBinanceChain(id, s) {
+        try {
+            const list = await getAlphaTokenList();
+            const t = list.get(s.toUpperCase());
+            if (!t) {
+                console.warn(`[Alpha] 未在 token/list 中找到 symbol="${s}"（已尝试大写匹配 "${s.toUpperCase()}"，列表共 ${list.size} 项）`);
+                cache[id] = {
+                    price: '0', change: 0, amp: 0, vol: 0, mktcap: null,
+                    high: '0', low: '0', source: 'binance-chain', alphaSymbol: '',
+                };
+                return false;
+            }
+
+            const price = parseFloat(t.price || 0);
+            const high  = parseFloat(t.priceHigh24h || 0);
+            const low   = parseFloat(t.priceLow24h || 0);
+            const chg   = parseFloat(t.percentChange24h || 0);
+            const vol   = parseFloat(t.volume24h || 0);
+            const mktcap = parseFloat(t.marketCap || t.fdv || 0);
+            const liquidity = parseFloat(t.liquidity || 0);
+            const open = price > 0 && chg > -100 ? price / (1 + chg / 100) : 0;
 
             if (price > 0) {
                 const decimals = price >= 1000 ? 2 : price >= 1 ? 4 : 8;
@@ -1495,21 +2506,23 @@
                     change:     chg,
                     amp:        open > 0 ? (high - low) / open * 100 : 0,
                     vol:        vol / 10000,
-                    mktcap:     parseFloat(d.marketCap || d.fullyDilutedValuation || 0) / 10000 || null,
+                    mktcap:     mktcap ? mktcap / 10000 : null,
                     high:       high.toFixed(decimals),
                     low:        low.toFixed(decimals),
                     source:     'binance-chain',
-                    alphaSymbol,
+                    alphaSymbol: t.alphaId || '',
                     liquidity,
                 };
                 return true;
             }
-        } catch {}
+            console.warn(`[Alpha] symbol="${s}" 匹配到 token 但 price<=0，原始 token 数据:`, t);
+        } catch (e) {
+            console.error(`[Alpha] fetchBinanceChain("${s}") 异常:`, e);
+        }
 
-        // ticker 接口返回空或失败时，仅记录 alphaSymbol
         cache[id] = {
             price: '0', change: 0, amp: 0, vol: 0, mktcap: null,
-            high: '0', low: '0', source: 'binance-chain', alphaSymbol,
+            high: '0', low: '0', source: 'binance-chain', alphaSymbol: '',
         };
         return false;
     }
@@ -1736,8 +2749,9 @@
         const id = sym + '@' + (exchange || 'auto') + '_' + Date.now();
 
         input.value = '';
-        rows.push({ id, sym, exchange, pinned: false });
+        rows.push({ id, sym, exchange, pinned: true });
         renderTable();
+        autoSyncSettingsToGist();
 
         const doFetch = async () => {
             await fetchRow({ id, sym, exchange });
@@ -1757,6 +2771,7 @@
         rows = rows.filter(r => r.id !== id);
         delete cache[id];
         renderTable();
+        autoSyncSettingsToGist();
     }
 
     // ── Init ──────────────────────────────────────────────────────
@@ -1766,45 +2781,46 @@
 
     renderHeader();
     renderTable();
+    renderQuickLinksBar();
     fetchAll();
     setInterval(fetchAll, 3000);
 </script>
 
 <script>
-(function () {
-    let wakeLock = null;
-    async function requestWakeLock() {
-        try {
-            if ('wakeLock' in navigator) {
-                wakeLock = await navigator.wakeLock.request('screen');
-                wakeLock.addEventListener('release', () => { wakeLock = null; });
-            }
-        } catch (e) { /* ignore */ }
-    }
-    document.addEventListener('visibilitychange', () => {
-        if (document.visibilityState === 'visible') requestWakeLock();
-    });
-    requestWakeLock();
-
-    if (!('wakeLock' in navigator)) {
-        const video = document.createElement('video');
-        video.setAttribute('playsinline', '');
-        video.setAttribute('muted', '');
-        video.muted = true;
-        video.loop = true;
-        video.style.position = 'fixed';
-        video.style.width = '1px';
-        video.style.height = '1px';
-        video.style.opacity = '0';
-        video.style.pointerEvents = 'none';
-        video.src = 'data:video/mp4;base64,AAAAHGZ0eXBpc29tAAACAGlzb21pc28yYXZjMQAAAAhmcmVlAAAC7W1kYXQAAAAvZ8fPh0+HAAAAB6cUCBFTNRZOb/jmz1DbAsyKlfmzz9NAvgygxvfPvhAcXTd0YhAAAAA=';
-        video.play().catch(() => {});
-        document.body.appendChild(video);
+    (function () {
+        let wakeLock = null;
+        async function requestWakeLock() {
+            try {
+                if ('wakeLock' in navigator) {
+                    wakeLock = await navigator.wakeLock.request('screen');
+                    wakeLock.addEventListener('release', () => { wakeLock = null; });
+                }
+            } catch (e) { /* ignore */ }
+        }
         document.addEventListener('visibilitychange', () => {
-            if (document.visibilityState === 'visible') video.play().catch(() => {});
+            if (document.visibilityState === 'visible') requestWakeLock();
         });
-    }
-})();
+        requestWakeLock();
+
+        if (!('wakeLock' in navigator)) {
+            const video = document.createElement('video');
+            video.setAttribute('playsinline', '');
+            video.setAttribute('muted', '');
+            video.muted = true;
+            video.loop = true;
+            video.style.position = 'fixed';
+            video.style.width = '1px';
+            video.style.height = '1px';
+            video.style.opacity = '0';
+            video.style.pointerEvents = 'none';
+            video.src = 'data:video/mp4;base64,AAAAHGZ0eXBpc29tAAACAGlzb21pc28yYXZjMQAAAAhmcmVlAAAC7W1kYXQAAAAvZ8fPh0+HAAAAB6cUCBFTNRZOb/jmz1DbAsyKlfmzz9NAvgygxvfPvhAcXTd0YhAAAAA=';
+            video.play().catch(() => {});
+            document.body.appendChild(video);
+            document.addEventListener('visibilitychange', () => {
+                if (document.visibilityState === 'visible') video.play().catch(() => {});
+            });
+        }
+    })();
 </script>
 
 </body>

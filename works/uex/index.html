@@ -1,0 +1,1332 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>UEX Radar · 六大交易所新币上架雷达</title>
+<style>
+/* ===== 基础与主题变量 ===== */
+:root{
+  --bg:#0b0e11; --panel:#14181f; --panel2:#1a2029; --line:#232b36; --line2:#2c3644;
+  --text:#e8ecf0; --text-dim:#9aa5b1; --text-faint:#66707d;
+  --accent:#34d399; --accent-dim:#0e3b2e;
+  --warn:#fbbf24; --danger:#f87171; --info:#60a5fa;
+  --mono:ui-monospace,"SF Mono",SFMono-Regular,Menlo,Consolas,"Liberation Mono",monospace;
+  --sans:-apple-system,BlinkMacSystemFont,"PingFang SC","Hiragino Sans GB","Microsoft YaHei","Noto Sans CJK SC",sans-serif;
+  --ex-binance:#f0b90b; --ex-okx:#2aa9e0; --ex-bybit:#3b82f6; --ex-mexc:#22c55e; --ex-gate:#2dd4bf; --ex-bitget:#f97316;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{background:var(--bg);color:var(--text);font-family:var(--sans);font-size:14px;line-height:1.5}
+body{padding-bottom:40px}
+a{color:inherit}
+button{font-family:inherit}
+.mono{font-family:var(--mono);font-variant-numeric:tabular-nums}
+
+/* ===== 顶栏 ===== */
+.topbar{position:sticky;top:0;z-index:50;display:flex;align-items:center;gap:16px;padding:12px 20px;background:rgba(11,14,17,.92);backdrop-filter:blur(6px);border-bottom:1px solid var(--line);flex-wrap:wrap}
+.brand{display:flex;align-items:baseline;gap:8px;font-size:18px;font-weight:700;letter-spacing:.5px}
+.brand .logo{font-family:var(--mono);color:#0b0e11;background:var(--accent);padding:1px 7px;border-radius:3px;font-size:15px;font-weight:800}
+.brand .sub{font-size:12px;color:var(--text-dim);font-weight:400;letter-spacing:1px}
+.top-actions{margin-left:auto;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.src-status{font-size:12px;color:var(--text-dim);display:flex;align-items:center;gap:6px;font-family:var(--mono)}
+.src-status .led{width:8px;height:8px;border-radius:50%;background:var(--text-faint);flex:none}
+.src-status .led.ok{background:var(--accent);box-shadow:0 0 6px rgba(52,211,153,.6)}
+.src-status .led.part{background:var(--warn)}
+.src-status .led.err{background:var(--danger)}
+.last-update{font-size:12px;color:var(--text-faint);font-family:var(--mono)}
+.btn{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--line2);background:var(--panel2);color:var(--text);border-radius:6px;padding:6px 12px;font-size:13px;cursor:pointer;transition:border-color .15s,background .15s}
+.btn:hover{border-color:var(--text-faint)}
+.btn svg{width:14px;height:14px;flex:none}
+.btn.primary{border-color:var(--accent-dim);background:var(--accent-dim);color:var(--accent)}
+.btn.primary:hover{border-color:var(--accent)}
+.btn.spinning svg{animation:spin 1s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* ===== 布局 ===== */
+main{max-width:1560px;margin:0 auto;padding:16px 20px;display:flex;flex-direction:column;gap:16px}
+.layout{display:grid;grid-template-columns:minmax(0,1fr) 380px;gap:16px;align-items:start}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:8px;overflow:hidden}
+.panel-head{display:flex;align-items:center;gap:12px;padding:12px 16px;border-bottom:1px solid var(--line);flex-wrap:wrap}
+.panel-head h2{font-size:14px;font-weight:600;letter-spacing:.5px;display:flex;align-items:center;gap:8px}
+.panel-head h2 .bar{width:3px;height:14px;background:var(--accent);border-radius:1px}
+.panel-head .head-right{margin-left:auto;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+
+/* ===== KPI ===== */
+.kpi-strip{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px}
+.kpi{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:14px 16px;display:flex;flex-direction:column;gap:6px;min-height:86px}
+.kpi .k-label{font-size:12px;color:var(--text-dim);display:flex;align-items:center;gap:6px}
+.kpi .k-label .dot{width:8px;height:8px;border-radius:2px;flex:none}
+.kpi .k-num{font-family:var(--mono);font-size:26px;font-weight:700;line-height:1.1;font-variant-numeric:tabular-nums}
+.kpi .k-num small{font-size:13px;color:var(--text-dim);font-weight:400;margin-left:4px}
+.kpi .k-sub{font-size:11px;color:var(--text-faint)}
+
+/* ===== 筛选条 ===== */
+.filters{display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:10px 16px;border-bottom:1px solid var(--line);background:var(--panel2)}
+.chip{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--line2);background:transparent;color:var(--text-dim);border-radius:14px;padding:3px 12px;font-size:12px;cursor:pointer;transition:all .15s;user-select:none}
+.chip:hover{color:var(--text);border-color:var(--text-faint)}
+.chip.on{background:var(--panel2);color:var(--text);border-color:var(--text-faint)}
+.chip .dot{width:7px;height:7px;border-radius:50%}
+.chip .cnt{font-family:var(--mono);font-size:11px;color:var(--text-faint)}
+.chip.on .cnt{color:var(--accent)}
+.filters .sep{width:1px;height:18px;background:var(--line2);margin:0 4px}
+select.filter{background:var(--panel2);border:1px solid var(--line2);color:var(--text);border-radius:6px;padding:4px 8px;font-size:12px;font-family:var(--mono)}
+.search-box{position:relative;display:flex;align-items:center}
+.search-box input{background:var(--panel2);border:1px solid var(--line2);color:var(--text);border-radius:6px;padding:5px 10px 5px 28px;font-size:12px;width:170px;outline:none}
+.search-box input:focus{border-color:var(--text-faint)}
+.search-box svg{position:absolute;left:8px;width:13px;height:13px;color:var(--text-faint);pointer-events:none}
+.toggle{display:inline-flex;align-items:center;gap:6px;font-size:12px;color:var(--text-dim);cursor:pointer;user-select:none}
+.toggle input{accent-color:var(--accent)}
+.toggle .star{color:var(--warn)}
+
+/* ===== 表格 ===== */
+.table-wrap{overflow-x:auto;max-height:calc(100vh - 320px);min-height:320px}
+table{width:100%;border-collapse:collapse;font-size:13px;min-width:860px}
+thead th{position:sticky;top:0;background:var(--panel);color:var(--text-faint);font-size:11px;font-weight:600;text-align:left;padding:8px 12px;border-bottom:1px solid var(--line2);letter-spacing:.5px;z-index:2;white-space:nowrap}
+tbody td{padding:8px 12px;border-bottom:1px solid var(--line);vertical-align:middle;white-space:nowrap}
+tbody tr:hover{background:#161c24}
+tbody tr.row-new{background:rgba(52,211,153,.04)}
+td.exch{display:flex;align-items:center;gap:7px;font-weight:500}
+td.exch .dot{width:8px;height:8px;border-radius:50%;flex:none}
+.mkt{font-size:11px;padding:1px 8px;border-radius:10px;border:1px solid;white-space:nowrap}
+.mkt-spot{color:#6ee7b7;border-color:#0e4a3a;background:rgba(52,211,153,.08)}
+.mkt-fut{color:#93c5fd;border-color:#1e3a5f;background:rgba(96,165,250,.08)}
+.mkt-alpha{color:#fcd34d;border-color:#5c4a0e;background:rgba(251,191,36,.08)}
+td.pair{font-family:var(--mono);font-weight:600;font-size:13px}
+td.pair a{color:var(--text);text-decoration:none;display:inline-flex;align-items:center;gap:4px}
+td.pair a:hover{color:var(--accent)}
+td.pair a svg{width:11px;height:11px;color:var(--text-faint)}
+.badge-new{display:inline-block;font-size:10px;font-weight:700;color:#0b0e11;background:var(--accent);border-radius:3px;padding:0 4px;margin-left:6px;vertical-align:1px;letter-spacing:.5px}
+.badge-src{font-size:10px;color:var(--text-faint);border:1px solid var(--line2);border-radius:3px;padding:0 4px;margin-left:6px}
+.badge-src.official{color:#6ee7b7;border-color:#0e4a3a}
+td.ts{font-family:var(--mono);font-size:12px;color:var(--text)}
+td.ago{font-family:var(--mono);font-size:12px;color:var(--text-dim)}
+.row-actions{display:inline-flex;gap:4px}
+.icon-btn{display:inline-flex;align-items:center;justify-content:center;width:24px;height:24px;border:1px solid transparent;background:transparent;color:var(--text-faint);border-radius:5px;cursor:pointer;transition:all .15s}
+.icon-btn:hover{color:var(--text);border-color:var(--line2);background:var(--panel2)}
+.icon-btn svg{width:13px;height:13px}
+.icon-btn.starred{color:var(--warn)}
+.empty-row td{text-align:center;color:var(--text-faint);padding:36px 12px}
+.empty-row .hint{display:flex;flex-direction:column;align-items:center;gap:8px}
+.empty-row .hint .big{font-size:15px;color:var(--text-dim)}
+.load-more{display:block;width:100%;padding:10px;background:transparent;border:none;border-top:1px solid var(--line);color:var(--text-dim);cursor:pointer;font-size:12px;font-family:var(--mono)}
+.load-more:hover{color:var(--accent)}
+
+/* ===== 侧栏：公告与新闻 ===== */
+.side{display:flex;flex-direction:column;gap:16px;min-width:0}
+.ann-links{display:grid;grid-template-columns:1fr 1fr;gap:8px;padding:12px 16px}
+.ann-link{display:flex;align-items:center;gap:8px;border:1px solid var(--line);border-radius:6px;padding:8px 10px;text-decoration:none;color:var(--text);font-size:12px;background:var(--panel2);transition:border-color .15s}
+.ann-link:hover{border-color:var(--text-faint)}
+.ann-link .dot{width:8px;height:8px;border-radius:50%;flex:none}
+.ann-link .name{font-weight:600}
+.ann-link svg{margin-left:auto;width:11px;height:11px;color:var(--text-faint)}
+.ann-feed{padding:0 16px 14px}
+.ann-feed .ann-item{display:flex;gap:10px;padding:9px 0;border-top:1px solid var(--line)}
+.ann-feed .ann-item:first-child{border-top:none}
+.ann-item .a-time{font-family:var(--mono);font-size:11px;color:var(--text-faint);flex:none;padding-top:1px}
+.ann-item .a-title{font-size:12px;color:var(--text-dim);line-height:1.45}
+.ann-item a.a-title:hover{color:var(--accent)}
+.news-feed{padding:0 16px 14px;max-height:620px;overflow-y:auto}
+.news-tabs{display:flex;gap:4px;padding:10px 16px;border-bottom:1px solid var(--line);background:var(--panel2);flex-wrap:wrap}
+.news-tab{border:1px solid transparent;background:transparent;color:var(--text-faint);font-size:11px;padding:3px 10px;border-radius:12px;cursor:pointer;transition:all .15s}
+.news-tab:hover{color:var(--text)}
+.news-tab.on{color:var(--text);border-color:var(--line2);background:var(--panel)}
+.news-item{display:flex;gap:10px;padding:10px 0;border-top:1px solid var(--line);align-items:baseline}
+.news-item:first-child{border-top:none}
+.news-item .n-src{flex:none;font-size:10px;color:var(--text-faint);font-family:var(--mono);letter-spacing:.5px}
+.news-item .n-title{font-size:12.5px;color:var(--text);line-height:1.45}
+.news-item a.n-title:hover{color:var(--accent)}
+.news-item .n-time{flex:none;font-size:11px;color:var(--text-faint);font-family:var(--mono)}
+.feed-status{font-size:12px;color:var(--text-faint);padding:14px 16px;text-align:center}
+
+/* ===== 设置弹窗 ===== */
+.modal-mask{position:fixed;inset:0;background:rgba(5,7,10,.72);z-index:100;display:flex;align-items:flex-start;justify-content:center;padding:48px 16px;overflow-y:auto}
+.modal{background:var(--panel);border:1px solid var(--line2);border-radius:10px;width:100%;max-width:640px}
+.modal-head{display:flex;align-items:center;padding:14px 18px;border-bottom:1px solid var(--line)}
+.modal-head h3{font-size:15px;font-weight:600}
+.modal-head .close{margin-left:auto;background:transparent;border:none;color:var(--text-faint);cursor:pointer;padding:4px}
+.modal-head .close:hover{color:var(--text)}
+.modal-body{padding:18px;display:flex;flex-direction:column;gap:18px;max-height:calc(100vh - 180px);overflow-y:auto}
+.set-group{border:1px solid var(--line);border-radius:8px;padding:14px}
+.set-group h4{font-size:13px;color:var(--accent);margin-bottom:12px;display:flex;align-items:center;gap:6px}
+.set-group h4 .bar{width:3px;height:12px;background:var(--accent);border-radius:1px}
+.field{display:flex;flex-direction:column;gap:5px;margin-bottom:10px}
+.field label{font-size:12px;color:var(--text-dim)}
+.field input[type=text],.field input[type=password]{background:var(--panel2);border:1px solid var(--line2);color:var(--text);border-radius:6px;padding:8px 10px;font-size:13px;outline:none;font-family:var(--mono)}
+.field input:focus{border-color:var(--text-faint)}
+.field .help{font-size:11px;color:var(--text-faint);line-height:1.5}
+.gist-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:4px}
+.gist-status{font-size:12px;color:var(--text-dim);margin-top:8px;font-family:var(--mono);line-height:1.6;white-space:pre-wrap}
+.exch-switch{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.sw-row{display:flex;align-items:center;gap:8px;border:1px solid var(--line);border-radius:6px;padding:8px 10px;font-size:12.5px;background:var(--panel2)}
+.sw-row input{accent-color:var(--accent)}
+.sw-row .dot{width:8px;height:8px;border-radius:50%;flex:none}
+.sw-row .sw-label{margin-left:auto;font-family:var(--mono);font-size:11px;color:var(--text-faint)}
+.watch-input{display:flex;gap:8px}
+.watch-input input{flex:1}
+.watch-chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+.watch-chip{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--line2);border-radius:12px;padding:2px 10px;font-size:12px;background:var(--panel2);color:var(--text)}
+.watch-chip .rm{background:none;border:none;color:var(--text-faint);cursor:pointer;font-size:13px;padding:0 2px;line-height:1}
+.watch-chip .rm:hover{color:var(--danger)}
+.modal-foot{display:flex;justify-content:flex-end;gap:10px;padding:14px 18px;border-top:1px solid var(--line)}
+.hidden{display:none!important}
+
+/* ===== Toast ===== */
+#toast-root{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);z-index:200;display:flex;flex-direction:column;gap:8px;align-items:center}
+.toast{background:var(--panel2);border:1px solid var(--line2);color:var(--text);border-radius:8px;padding:9px 16px;font-size:13px;box-shadow:0 6px 24px rgba(0,0,0,.5);animation:toastIn .2s ease}
+.toast.err{border-color:#5f2a2a;color:#fca5a5}
+.toast.ok{border-color:#0e4a3a;color:#6ee7b7}
+@keyframes toastIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+
+/* ===== 响应式 ===== */
+@media (max-width:1100px){
+  .layout{grid-template-columns:1fr}
+  .side{flex-direction:row;flex-wrap:wrap}
+  .side .panel{flex:1 1 320px}
+}
+@media (max-width:768px){
+  main{padding:12px}
+  .topbar{padding:10px 12px}
+  .kpi-strip{grid-template-columns:repeat(2,1fr)}
+  .table-wrap{max-height:none}
+  .ann-links{grid-template-columns:1fr 1fr}
+  .search-box input{width:120px}
+  .exch-switch{grid-template-columns:1fr}
+}
+@media (prefers-reduced-motion:reduce){
+  *,*::before,*::after{animation-duration:.01ms!important;transition-duration:.01ms!important}
+}
+</style>
+</head>
+<body>
+
+<header class="topbar">
+  <div class="brand"><span class="logo">UEX</span> Radar <span class="sub">六大交易所新币上架雷达</span></div>
+  <div class="top-actions">
+    <span id="src-status" class="src-status"><span class="led" id="led"></span><span id="src-status-text">初始化</span></span>
+    <span id="last-update" class="last-update"></span>
+    <button id="btn-refresh" class="btn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-2.64-6.36M21 3v6h-6"/></svg>刷新</button>
+    <button id="btn-settings" class="btn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>设置</button>
+  </div>
+</header>
+
+<main>
+  <!-- ===== KPI 概览 ===== -->
+  <section class="kpi-strip" id="kpi-strip"></section>
+
+  <!-- ===== 主布局 ===== -->
+  <div class="layout">
+    <div class="panel table-panel">
+      <div class="panel-head">
+        <h2><span class="bar"></span>新增币对</h2>
+        <div class="head-right">
+          <span id="table-count" class="last-update"></span>
+        </div>
+      </div>
+      <div class="filters" id="filter-bar">
+        <span class="chip on" data-ex="all">全部</span>
+        <span class="sep"></span>
+        <span class="chip" data-ex="binance"><span class="dot" style="background:var(--ex-binance)"></span>Binance</span>
+        <span class="chip" data-ex="okx"><span class="dot" style="background:var(--ex-okx)"></span>OKX</span>
+        <span class="chip" data-ex="bybit"><span class="dot" style="background:var(--ex-bybit)"></span>Bybit</span>
+        <span class="chip" data-ex="mexc"><span class="dot" style="background:var(--ex-mexc)"></span>MEXC</span>
+        <span class="chip" data-ex="gate"><span class="dot" style="background:var(--ex-gate)"></span>Gate</span>
+        <span class="chip" data-ex="bitget"><span class="dot" style="background:var(--ex-bitget)"></span>Bitget</span>
+        <span class="sep"></span>
+        <span class="chip on" data-mkt="all">全部市场</span>
+        <span class="chip" data-mkt="spot">现货</span>
+        <span class="chip" data-mkt="futures">合约</span>
+        <span class="chip" data-mkt="alpha">Alpha / Pre-market</span>
+        <span class="sep"></span>
+        <select id="sel-window" class="filter">
+          <option value="1">最近 24 小时</option>
+          <option value="7" selected>最近 7 天</option>
+          <option value="30">最近 30 天</option>
+          <option value="90">最近 90 天</option>
+          <option value="0">全部（含基线）</option>
+        </select>
+        <span class="sep"></span>
+        <div class="search-box">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
+          <input id="inp-search" type="text" placeholder="搜索币种 / 币对">
+        </div>
+        <label class="toggle"><input type="checkbox" id="chk-watch">只看关注 <span class="star"><svg viewBox="0 0 24 24" width="12" height="12" fill="currentColor" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg></span></label>
+        <label class="toggle"><input type="checkbox" id="chk-stable" checked>排除稳定币</label>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>交易所</th><th>市场</th><th>币对</th><th>上线时间</th><th>距今</th><th style="text-align:right">操作</th>
+            </tr>
+          </thead>
+          <tbody id="pair-tbody"></tbody>
+        </table>
+      </div>
+      <button id="btn-more" class="load-more hidden">显示更多</button>
+    </div>
+
+    <aside class="side">
+      <div class="panel">
+        <div class="panel-head"><h2><span class="bar"></span>公告中心</h2></div>
+        <div class="ann-links" id="ann-links"></div>
+        <div class="ann-feed" id="ann-feed"><div class="feed-status">正在获取 Binance 最新上币公告…</div></div>
+      </div>
+      <div class="panel">
+        <div class="panel-head"><h2><span class="bar"></span>新闻</h2></div>
+        <div class="news-tabs" id="news-tabs"></div>
+        <div class="news-feed" id="news-feed"><div class="feed-status">正在加载新闻…</div></div>
+      </div>
+    </aside>
+  </div>
+</main>
+
+<!-- ===== 设置弹窗 ===== -->
+<div id="settings-modal" class="modal-mask hidden">
+  <div class="modal">
+    <div class="modal-head"><h3>设置与配置同步</h3><button class="close" id="btn-close-settings"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg></button></div>
+    <div class="modal-body">
+      <div class="set-group">
+        <h4><span class="bar"></span>GitHub Gist 配置数据库</h4>
+        <div class="field">
+          <label>Gist ID（URL 中 /gist/ 后面的一串字符）</label>
+          <input type="text" id="inp-gist-id" placeholder="例如 1a2b3c4d5e6f7a8b9c0d">
+          <div class="help">公开 Gist 无需 Token 即可读取；写回需要 Personal Access Token（仅保存于本机浏览器，用于 GitHub API 认证）。</div>
+        </div>
+        <div class="field">
+          <label>配置文件名（Gist 中的 JSON 文件名）</label>
+          <input type="text" id="inp-gist-file" placeholder="uexradar-config.json">
+        </div>
+        <div class="field">
+          <label>GitHub Personal Access Token（可选，写回 Gist 时需要，需 gist 权限）</label>
+          <input type="password" id="inp-gist-token" placeholder="ghp_xxxxxxxxxxxx">
+        </div>
+        <div class="gist-actions">
+          <button class="btn primary" id="btn-gist-pull">从 Gist 拉取配置</button>
+          <button class="btn" id="btn-gist-push">推送配置到 Gist</button>
+          <button class="btn" id="btn-gist-reset">恢复默认配置</button>
+        </div>
+        <div class="gist-status" id="gist-status">未连接 Gist。输入 Gist ID 后点击「从 Gist 拉取配置」即可同步设置与自选关注列表。</div>
+      </div>
+      <div class="set-group">
+        <h4><span class="bar"></span>数据源开关</h4>
+        <div class="exch-switch" id="exch-switches"></div>
+        <div class="help" style="margin-top:10px">关闭的交易所将不再抓取与展示。数据源状态：<span class="mono">官方时间</span> 表示交易所接口直接提供上线时间；<span class="mono">快照对比</span> 表示本机记录首次发现时间（首次运行建立基线，之后的访问自动发现新增）。</div>
+      </div>
+      <div class="set-group">
+        <h4><span class="bar"></span>自选关注（同步到 Gist）</h4>
+        <div class="watch-input">
+          <input type="text" id="inp-watch" placeholder="输入币种代码，如 PEPE，回车添加">
+          <button class="btn" id="btn-watch-add">添加</button>
+        </div>
+        <div class="watch-chips" id="watch-chips"></div>
+        <div class="help" style="margin-top:10px">关注列表会随配置一起同步到 Gist；表格中可点星标快速关注。</div>
+      </div>
+      <div class="set-group">
+        <h4><span class="bar"></span>关于</h4>
+        <div class="help" style="line-height:1.8">
+          数据直接来自各交易所公开行情接口，<span class="mono">官方时间</span>为交易所返回的上线时间戳；<span class="mono">快照对比</span>时间 = 本机首次发现时间（基线建立后的新增才会被记录）。<br>
+          新闻来自 CoinDesk / Cointelegraph / Decrypt RSS 与 Google News（经 rss2json 转换）。<br>
+          所有配置与关注数据默认保存在本机浏览器（localStorage），可通过上方 Gist 同步到云端。
+        </div>
+      </div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn" id="btn-settings-done">完成</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast-root"></div>
+
+<script>
+'use strict';
+/* =========================================================
+ * UEX Radar —— 六大交易所新币上架监控
+ * 数据：交易所公开行情接口 / 快照对比 / 公告 / RSS 新闻
+ * 配置：localStorage + GitHub Gist 同步
+ * =======================================================*/
+
+/* ===== 常量 ===== */
+var LS_CONFIG = 'uexradar_config_v1';
+var LS_SNAPSHOT = 'uexradar_snapshot_v1';
+var LS_GIST = 'uexradar_gist_v1';
+
+var STABLES = ['USDT','USDC','DAI','FDUSD','TUSD','BUSD','PYUSD','EUR','USD','XUSD','USDE','USD1','GUSD','PAX','USTC','FRAX','EURS','AEUR','EURT','USDY','USDP','USDD','USDX','USDH','USDR','AUSD','SUSD','USDJ','LUSD','MIM','XSGD','WUSD','USDS','PYUSD','VUSD','CUSD','BIDR','EURC','EURI','USDT0'];
+
+var EXCHANGES = {
+  binance: {name:'Binance', color:'var(--ex-binance)', hex:'#f0b90b',
+    annUrl:'https://www.binance.com/zh-CN/support/announcement',
+    alphaUrl:'https://www.binance.com/zh-CN/alpha',
+    spot:{official:false, source:'快照对比'}, futures:{official:true, source:'官方时间'}},
+  okx: {name:'OKX', color:'var(--ex-okx)', hex:'#2aa9e0',
+    annUrl:'https://www.okx.com/zh-hans/help/announcements',
+    spot:{official:true, source:'官方时间'}, futures:{official:true, source:'官方时间'}},
+  bybit: {name:'Bybit', color:'var(--ex-bybit)', hex:'#3b82f6',
+    annUrl:'https://www.bybit.com/zh-CN/announcements',
+    spot:{official:false, source:'快照对比'}, futures:{official:false, source:'快照对比'}},
+  mexc: {name:'MEXC', color:'var(--ex-mexc)', hex:'#22c55e',
+    annUrl:'https://www.mexc.com/zh-CN/announcements',
+    spot:{official:false, source:'快照对比'}, futures:{official:false, source:'快照对比'}},
+  gate: {name:'Gate', color:'var(--ex-gate)', hex:'#2dd4bf',
+    annUrl:'https://www.gate.io/zh/announcements',
+    spot:{official:true, source:'官方时间'}, futures:{official:true, source:'官方时间'}},
+  bitget: {name:'Bitget', color:'var(--ex-bitget)', hex:'#f97316',
+    annUrl:'https://www.bitget.com/zh-CN/news/announcements',
+    spot:{official:true, source:'官方时间'}, futures:{official:false, source:'快照对比'}}
+};
+
+var NEWS_SOURCES = [
+  {key:'coindesk', label:'CoinDesk', url:'https://www.coindesk.com/arc/outboundfeeds/rss/'},
+  {key:'cointelegraph', label:'Cointelegraph', url:'https://cointelegraph.com/rss'},
+  {key:'decrypt', label:'Decrypt', url:'https://decrypt.co/feed'}
+];
+
+var DEFAULT_CONFIG = {
+  version: 1,
+  timeWindowDays: 7,
+  enabledExchanges: ['binance','okx','bybit','mexc','gate','bitget'],
+  excludeStable: true,
+  watchlist: [],
+  newsLimit: 15,
+  updatedAt: null
+};
+
+/* ===== 状态 ===== */
+var state = {
+  config: loadConfig(),
+  snapshot: loadSnapshot(),
+  sources: {},      // srcKey -> {status:'idle'|'ok'|'err'|'blocked', items:[], error:'', updatedAt:0}
+  alphaItems: [],   // {symbol, time, link, exchange}
+  annItems: [],     // Binance 公告
+  news: [],         // 合并新闻
+  newsSource: 'all',
+  coinNews: null,   // {base, items}
+  filters: {ex:'all', mkt:'all', window: 7, search:'', watchOnly:false, excludeStable:true},
+  lastFullRefresh: 0,
+  pendingCoins: {}  // 排队中的币种新闻请求
+};
+
+/* ===== 工具 ===== */
+function $(id){ return document.getElementById(id); }
+function esc(s){
+  return String(s == null ? '' : s).replace(/[&<>"']/g, function(c){
+    return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];
+  });
+}
+function fmtTs(ts){
+  if(!ts) return '—';
+  var d = new Date(ts);
+  function p(n){ return (n<10?'0':'')+n; }
+  return d.getFullYear()+'-'+p(d.getMonth()+1)+'-'+p(d.getDate())+' '+p(d.getHours())+':'+p(d.getMinutes());
+}
+function relTime(ts){
+  if(!ts) return '—';
+  var diff = Date.now() - ts;
+  if(diff < 0) diff = 0;
+  var m = Math.floor(diff/60000);
+  if(m < 1) return '刚刚';
+  if(m < 60) return m+' 分钟前';
+  var h = Math.floor(m/60);
+  if(h < 24) return h+' 小时前';
+  var d = Math.floor(h/24);
+  if(d < 30) return d+' 天前';
+  var mo = Math.floor(d/30);
+  return mo+' 个月前';
+}
+function toast(msg, type){
+  var root = $('toast-root');
+  var el = document.createElement('div');
+  el.className = 'toast' + (type ? ' '+type : '');
+  el.textContent = msg;
+  root.appendChild(el);
+  setTimeout(function(){ el.style.opacity='0'; el.style.transition='opacity .3s'; setTimeout(function(){ el.remove(); }, 320); }, 3200);
+}
+function debounce(fn, wait){
+  var t; return function(){ var a=arguments, c=this; clearTimeout(t); t=setTimeout(function(){ fn.apply(c,a); }, wait); };
+}
+function fetchJson(url, opts){
+  opts = opts || {};
+  var ctrl = new AbortController();
+  var timer = setTimeout(function(){ ctrl.abort(); }, 20000);
+  var headers = {'Accept':'application/json'};
+  if(opts.headers){ for(var k in opts.headers) headers[k] = opts.headers[k]; }
+  return fetch(url, {method: opts.method||'GET', headers: headers, body: opts.body||undefined, signal: ctrl.signal})
+    .then(function(res){
+      if(!res.ok) throw new Error('HTTP '+res.status);
+      return res.json();
+    })
+    .finally(function(){ clearTimeout(timer); });
+}
+function isStablePair(base, quote){
+  return STABLES.indexOf(String(base).toUpperCase()) >= 0 && STABLES.indexOf(String(quote).toUpperCase()) >= 0;
+}
+
+/* ===== 配置持久化 ===== */
+function loadConfig(){
+  try{
+    var raw = localStorage.getItem(LS_CONFIG);
+    if(!raw) return JSON.parse(JSON.stringify(DEFAULT_CONFIG));
+    var cfg = JSON.parse(raw);
+    var base = JSON.parse(JSON.stringify(DEFAULT_CONFIG));
+    for(var k in base){ if(cfg[k] !== undefined) base[k] = cfg[k]; }
+    if(!base.enabledExchanges || !base.enabledExchanges.length) base.enabledExchanges = DEFAULT_CONFIG.enabledExchanges.slice();
+    return base;
+  }catch(e){ return JSON.parse(JSON.stringify(DEFAULT_CONFIG)); }
+}
+function saveConfig(){
+  state.config.updatedAt = new Date().toISOString();
+  try{ localStorage.setItem(LS_CONFIG, JSON.stringify(state.config)); }catch(e){}
+}
+function loadSnapshot(){
+  try{
+    var raw = localStorage.getItem(LS_SNAPSHOT);
+    return raw ? JSON.parse(raw) : {};
+  }catch(e){ return {}; }
+}
+function saveSnapshot(){
+  try{
+    // 控制体积：快照只保留 symbol->firstSeen，meta 单独存
+    localStorage.setItem(LS_SNAPSHOT, JSON.stringify(state.snapshot));
+  }catch(e){
+    // 超限时丢弃最早的源快照
+    try{
+      var keys = Object.keys(state.snapshot);
+      if(keys.length){ delete state.snapshot[keys[0]]; localStorage.setItem(LS_SNAPSHOT, JSON.stringify(state.snapshot)); }
+    }catch(e2){}
+  }
+}
+
+/* ===== 交易链接 ===== */
+function tradeLink(exch, market, symbol, base, quote){
+  switch(exch){
+    case 'binance': return market==='futures' ? 'https://www.binance.com/zh-CN/futures/'+symbol : 'https://www.binance.com/zh-CN/trade/'+symbol;
+    case 'okx': return market==='futures' ? 'https://www.okx.com/zh-hans/trade-swap/'+symbol : 'https://www.okx.com/zh-hans/trade-spot/'+symbol;
+    case 'bybit': return market==='futures' ? 'https://www.bybit.com/trade/usdt/'+symbol : 'https://www.bybit.com/trade/spot/'+symbol;
+    case 'mexc': return market==='futures' ? 'https://futures.mexc.com/zh-CN/exchange/'+symbol.replace('_','') : 'https://www.mexc.com/zh-CN/exchange/'+symbol;
+    case 'gate': return market==='futures' ? 'https://www.gate.io/futures/USDT/'+symbol : 'https://www.gate.io/trade/'+symbol;
+    case 'bitget': return market==='futures' ? 'https://www.bitget.com/zh-CN/futures/usdt/'+symbol : 'https://www.bitget.com/zh-CN/spot/'+symbol;
+  }
+  return '#';
+}
+function pairDisplay(symbol){
+  return String(symbol).replace(/-/g,'/').replace(/_/g,'/');
+}
+
+/* =========================================================
+ * 数据源 Fetcher：每家交易所 × 市场
+ * 返回 [{symbol, base, quote, time(ms|null), status, link}]
+ * =======================================================*/
+var FETCHERS = {};
+
+FETCHERS.binance_spot = function(){
+  return fetchJson('https://data-api.binance.vision/api/v3/exchangeInfo').then(function(r){
+    return (r.symbols||[]).filter(function(s){ return s.status==='TRADING'; }).map(function(s){
+      return {symbol:s.symbol, base:s.baseAsset, quote:s.quoteAsset, time:null, status:'Trading'};
+    });
+  });
+};
+FETCHERS.binance_futures = function(){
+  return fetchJson('https://fapi.binance.com/fapi/v1/exchangeInfo').then(function(r){
+    return (r.symbols||[]).filter(function(s){ return s.status==='TRADING' && (s.contractType==='PERPETUAL' || !s.contractType); }).map(function(s){
+      return {symbol:s.symbol, base:s.baseAsset, quote:s.quoteAsset, time:s.onboardDate ? +s.onboardDate : null, status:'Trading'};
+    });
+  });
+};
+FETCHERS.okx_spot = function(){
+  return fetchJson('https://www.okx.com/api/v5/public/instruments?instType=SPOT').then(function(r){
+    return (r.data||[]).filter(function(x){ return x.state==='live' || x.state==='preopen'; }).map(function(x){
+      return {symbol:x.instId, base:x.baseCcy, quote:x.quoteCcy, time:x.listTime ? +x.listTime : null, status:x.state};
+    });
+  });
+};
+FETCHERS.okx_futures = function(){
+  return fetchJson('https://www.okx.com/api/v5/public/instruments?instType=SWAP').then(function(r){
+    return (r.data||[]).filter(function(x){ return x.state==='live' || x.state==='preopen'; }).map(function(x){
+      return {symbol:x.instId, base:x.ctValCcy||x.settleCcy, quote:x.settleCcy, time:x.listTime ? +x.listTime : null, status:x.state};
+    });
+  });
+};
+FETCHERS.bybit_spot = function(){
+  return fetchPage('https://api.bybit.com/v5/market/instruments-info?category=spot&limit=1000', function(r){ return (r.result||{}).list||[]; });
+};
+FETCHERS.bybit_futures = function(){
+  return fetchPage('https://api.bybit.com/v5/market/instruments-info?category=linear&limit=1000', function(r){ return (r.result||{}).list||[]; });
+};
+function fetchPage(url, extract){
+  var all = [];
+  var cursor = '';
+  var page = 0;
+  function next(){
+    page++;
+    if(page > 5) return Promise.resolve(all);
+    var u = url + (cursor ? '&cursor='+encodeURIComponent(cursor) : '');
+    return fetchJson(u).then(function(r){
+      var list = extract(r) || [];
+      for(var i=0;i<list.length;i++) all.push(list[i]);
+      var res = r.result || {};
+      if(res.nextPageCursor && res.nextPageCursor !== cursor && list.length){
+        cursor = res.nextPageCursor;
+        return next();
+      }
+      return all;
+    });
+  }
+  return next().then(function(list){
+    return list.filter(function(s){ return s.status==='Trading'; }).map(function(s){
+      return {symbol:s.symbol, base:s.baseCoin, quote:s.quoteCoin, time:null, status:'Trading'};
+    });
+  });
+}
+FETCHERS.mexc_spot = function(){
+  return fetchJson('https://api.mexc.com/api/v3/exchangeInfo').then(function(r){
+    return (r.symbols||[]).filter(function(s){ return s.status==='ENABLED' || s.status==='1'; }).map(function(s){
+      return {symbol:s.symbol, base:s.baseAsset, quote:s.quoteAsset, time:null, status:'Enabled'};
+    });
+  });
+};
+FETCHERS.mexc_futures = function(){
+  return fetchJson('https://contract.mexc.com/api/v1/contract/detail').then(function(r){
+    return (r.data||[]).filter(function(c){ return c.state===1 || c.state===2; }).map(function(c){
+      return {symbol:c.symbol.replace('_',''), base:c.baseCoin, quote:c.quoteCoin, time:c.createTime ? +c.createTime : null, status:'Open'};
+    });
+  });
+};
+FETCHERS.gate_spot = function(){
+  return fetchJson('https://api.gateio.ws/api/v4/spot/currency_pairs').then(function(r){
+    return (r||[]).filter(function(p){ return p.trade_status==='tradable'; }).map(function(p){
+      return {symbol:p.id, base:p.base, quote:p.quote, time:p.sell_start ? p.sell_start*1000 : null, status:'Tradable'};
+    });
+  });
+};
+FETCHERS.gate_futures = function(){
+  return fetchJson('https://api.gateio.ws/api/v4/futures/usdt/contracts').then(function(r){
+    return (r||[]).filter(function(c){ return c.status==='trading'; }).map(function(c){
+      var parts = String(c.name).split('_');
+      return {symbol:c.name, base:parts[0], quote:'USDT', time:c.create_time ? c.create_time*1000 : null, status:'Trading'};
+    });
+  });
+};
+FETCHERS.bitget_spot = function(){
+  return fetchJson('https://api.bitget.com/api/v2/spot/public/symbols').then(function(r){
+    return (r.data||[]).filter(function(s){ return s.status==='online'; }).map(function(s){
+      return {symbol:s.symbol, base:s.baseCoin, quote:s.quoteCoin, time:s.openTime ? +s.openTime : null, status:'Online'};
+    });
+  });
+};
+FETCHERS.bitget_futures = function(){
+  return fetchJson('https://api.bitget.com/api/v2/mix/market/contracts?productType=USDT-FUTURES').then(function(r){
+    return (r.data||[]).filter(function(s){ return s.symbolStatus==='normal'; }).map(function(s){
+      return {symbol:s.symbol, base:s.baseCoin, quote:s.quoteCoin, time:s.launchTime ? +s.launchTime : null, status:'Normal'};
+    });
+  });
+};
+
+var SOURCE_DEFS = [
+  {key:'binance_spot', exch:'binance', mkt:'spot', label:'Binance 现货'},
+  {key:'binance_futures', exch:'binance', mkt:'futures', label:'Binance 合约'},
+  {key:'okx_spot', exch:'okx', mkt:'spot', label:'OKX 现货'},
+  {key:'okx_futures', exch:'okx', mkt:'futures', label:'OKX 合约'},
+  {key:'bybit_spot', exch:'bybit', mkt:'spot', label:'Bybit 现货'},
+  {key:'bybit_futures', exch:'bybit', mkt:'futures', label:'Bybit 合约'},
+  {key:'mexc_spot', exch:'mexc', mkt:'spot', label:'MEXC 现货'},
+  {key:'mexc_futures', exch:'mexc', mkt:'futures', label:'MEXC 合约'},
+  {key:'gate_spot', exch:'gate', mkt:'spot', label:'Gate 现货'},
+  {key:'gate_futures', exch:'gate', mkt:'futures', label:'Gate 合约'},
+  {key:'bitget_spot', exch:'bitget', mkt:'spot', label:'Bitget 现货'},
+  {key:'bitget_futures', exch:'bitget', mkt:'futures', label:'Bitget 合约'}
+];
+
+/* =========================================================
+ * 快照对比：无官方时间的源用它发现新增
+ * =======================================================*/
+function ensureSnapshotMeta(srcKey){
+  if(!state.snapshot._meta) state.snapshot._meta = {};
+  if(!state.snapshot._meta[srcKey]) state.snapshot._meta[srcKey] = {baselineAt: Date.now()};
+  return state.snapshot._meta[srcKey];
+}
+function mergeWithSnapshot(srcKey, items){
+  var meta = ensureSnapshotMeta(srcKey);
+  var baselineAt = meta.baselineAt;
+  var snap = state.snapshot[srcKey] || {};
+  state.snapshot[srcKey] = snap;
+  var now = Date.now();
+  var out = [];
+  for(var i=0;i<items.length;i++){
+    var it = items[i];
+    var key = it.symbol;
+    var firstSeen = snap[key];
+    var isBaseline = false;
+    if(!firstSeen){
+      firstSeen = now;
+      snap[key] = firstSeen;
+      // 基线窗口内的首次发现 = 基线（不算新增）
+      isBaseline = (now - baselineAt) < 120000;
+    }
+    var time = it.time || (isBaseline ? null : firstSeen);
+    out.push({symbol:it.symbol, base:it.base, quote:it.quote, time:time, firstSeen:firstSeen,
+      isNew:!isBaseline && !it.time && (now - firstSeen) < 120000,
+      source:it.time ? 'official' : (isBaseline ? 'baseline' : 'snapshot'),
+      status:it.status, link:it.link});
+  }
+  return out;
+}
+
+/* =========================================================
+ * 抓取主流程
+ * =======================================================*/
+function isSourceEnabled(src){
+  return state.config.enabledExchanges.indexOf(src.exch) >= 0;
+}
+function refreshAll(manual){
+  if(manual){
+    var btn = $('btn-refresh');
+    btn.classList.add('spinning');
+  }
+  var defs = SOURCE_DEFS.filter(isSourceEnabled);
+  var promises = [];
+  for(var i=0;i<defs.length;i++){
+    promises.push(loadSource(defs[i]));
+  }
+  return Promise.all(promises).then(function(){
+    saveSnapshot();
+    loadBinanceAnnouncements();
+    loadNews();
+    state.lastFullRefresh = Date.now();
+    renderAll();
+    if(manual){
+      var btn2 = $('btn-refresh');
+      btn2.classList.remove('spinning');
+      toast('数据已刷新', 'ok');
+    }
+  }).catch(function(e){
+    if(manual){
+      var btn3 = $('btn-refresh');
+      btn3.classList.remove('spinning');
+    }
+    toast('部分数据源加载失败，详见表格空态与状态灯', 'err');
+  });
+}
+function loadSource(def){
+  var s = {key:def.key, exch:def.exch, mkt:def.mkt, status:'loading', items:[], error:'', updatedAt:0};
+  state.sources[def.key] = s;
+  return FETCHERS[def.key]().then(function(items){
+    var merged = mergeWithSnapshot(def.key, items);
+    s.status = 'ok'; s.items = merged; s.updatedAt = Date.now();
+    renderStatusBar();
+    return s;
+  }).catch(function(err){
+    s.status = 'err'; s.error = String(err && err.message || err);
+    renderStatusBar();
+    return s;
+  });
+}
+function refreshEnabledSourcesFor(exch){
+  var defs = SOURCE_DEFS.filter(function(d){ return d.exch===exch && isSourceEnabled(d); });
+  return Promise.all(defs.map(loadSource)).then(function(){ saveSnapshot(); renderAll(); });
+}
+
+/* =========================================================
+ * Binance 公告（现货时间补充 + Alpha 列表）
+ * =======================================================*/
+function loadBinanceAnnouncements(){
+  var feed = $('ann-feed');
+  if(state.annLoadedAt && (Date.now() - state.annLoadedAt) < 15*60*1000 && state.annItems.length){
+    renderAnnouncements(); return;
+  }
+  try{
+    fetchJson('https://www.binance.com/bapi/composite/v1/public/cms/article/list/query', {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({type:1,pageNo:1,pageSize:40,blockType:'announcement',catalogId:48})
+    }).then(function(r){
+      var arts = (r.data && r.data.articles) || [];
+      if(!arts.length){ feed.innerHTML = '<div class="feed-status">未获取到公告（接口返回为空），可点上方链接直达公告中心。</div>'; return; }
+      state.annItems = arts.map(function(a){
+        return {title:a.title, time:a.releaseDate ? +a.releaseDate : null, url:'https://www.binance.com/zh-CN/support/announcement/'+(a.code||'')};
+      });
+      state.annLoadedAt = Date.now();
+      renderAnnouncements();
+      // 解析上市币种 → 补充 Binance 现货时间
+      var listed = parseBinanceListings(arts);
+      if(listed.length) patchBinanceSpotTimes(listed);
+    }).catch(function(){
+      feed.innerHTML = '<div class="feed-status">Binance 公告接口当前被限流（403），请点上方链接直达公告中心查看。</div>';
+    });
+  }catch(e){
+    feed.innerHTML = '<div class="feed-status">公告接口不可用，请点上方链接直达公告中心。</div>';
+  }
+}
+function parseBinanceListings(arts){
+  var out = [];
+  var re1 = /Will List ([A-Z0-9]{2,12})\s*\(([A-Z0-9]{2,12})\)/i;
+  var re2 = /New Listing\s*:?\s*([A-Z0-9]{2,12})/i;
+  var reAlpha = /Alpha/i;
+  for(var i=0;i<arts.length;i++){
+    var t = arts[i].title || '';
+    var m = t.match(re1) || t.match(re2);
+    if(m && !reAlpha.test(t)){
+      out.push({base:m[1].toUpperCase(), time:arts[i].releaseDate ? +arts[i].releaseDate : null,
+        title:t, url:'https://www.binance.com/zh-CN/support/announcement/'+(arts[i].code||'')});
+    }
+  }
+  return out;
+}
+function patchBinanceSpotTimes(listings){
+  var src = state.sources['binance_spot'];
+  if(!src || src.status!=='ok') return;
+  var byBase = {};
+  for(var i=0;i<listings.length;i++){
+    var b = listings[i].base;
+    if(!byBase[b] || !byBase[b].time) byBase[b] = listings[i];
+  }
+  var changed = false;
+  for(var j=0;j<src.items.length;j++){
+    var it = src.items[j];
+    var info = byBase[it.base];
+    if(info && info.time && !it.time){
+      it.time = info.time; it.source = 'official'; it.annUrl = info.url; changed = true;
+    }
+  }
+  if(changed) renderAll();
+}
+function renderAnnouncements(){
+  var feed = $('ann-feed');
+  if(!state.annItems.length){ feed.innerHTML = '<div class="feed-status">暂无公告数据。</div>'; return; }
+  var html = state.annItems.slice(0,8).map(function(a){
+    return '<div class="ann-item"><span class="a-time">'+fmtTs(a.time)+'</span>'+
+      '<a class="a-title" href="'+esc(a.url)+'" target="_blank" rel="noopener">'+esc(a.title)+'</a></div>';
+  }).join('');
+  feed.innerHTML = html;
+}
+
+/* =========================================================
+ * 新闻：RSS 聚合 + 币种相关
+ * =======================================================*/
+function loadNews(force){
+  if(!force && state.newsLoadedAt && (Date.now() - state.newsLoadedAt) < 10*60*1000 && state.news.length){
+    renderNewsTabs(); renderNews(); return;
+  }
+  var defs = NEWS_SOURCES;
+  var jobs = defs.map(function(d){
+    return fetchJson('https://api.rss2json.com/v1/api.json?rss_url='+encodeURIComponent(d.url))
+      .then(function(r){ return (r.items||[]).map(function(it){ return {src:d.label, title:it.title, time:Date.parse(it.pubDate)||null, url:it.link}; }); })
+      .catch(function(){ return []; });
+  });
+  Promise.all(jobs).then(function(lists){
+    var all = [];
+    for(var i=0;i<lists.length;i++) all = all.concat(lists[i]);
+    all.sort(function(a,b){ return (b.time||0)-(a.time||0); });
+    state.news = all.slice(0, 60);
+    state.newsLoadedAt = Date.now();
+    renderNewsTabs();
+    renderNews();
+  }).catch(function(){});
+}
+function loadCoinNews(base, symbol){
+  var key = base + ' ' + (symbol||'');
+  var tabKey = base;
+  if(state.coinNews && state.coinNews.base === base && state.coinNews.symbol === symbol) return;
+  var q = encodeURIComponent(key + ' crypto');
+  var feedUrl = 'https://news.google.com/rss/search?q='+q+'&hl=zh-CN&gl=CN&ceid=CN:zh-Hans';
+  state.coinNews = {base:base, symbol:symbol, loading:true, items:[]};
+  renderNewsTabs();
+  renderNews();
+  fetchJson('https://api.rss2json.com/v1/api.json?rss_url='+encodeURIComponent(feedUrl))
+    .then(function(r){
+      if(!state.coinNews || state.coinNews.base !== base) return;
+      state.coinNews.loading = false;
+      state.coinNews.items = (r.items||[]).slice(0,12).map(function(it){
+        return {src:'Google News', title:it.title, time:Date.parse(it.pubDate)||null, url:it.link};
+      });
+      renderNews();
+    })
+    .catch(function(){
+      if(state.coinNews && state.coinNews.base === base){
+        state.coinNews.loading = false;
+        state.coinNews.error = '加载失败';
+        renderNews();
+      }
+    });
+}
+function renderNewsTabs(){
+  var tabs = $('news-tabs');
+  var html = '<button class="news-tab'+(state.newsSource==='all'?' on':'')+'" data-news="all">全部</button>';
+  if(state.coinNews){
+    html += '<button class="news-tab'+(state.newsSource==='coin'?' on':'')+'" data-news="coin">'+esc(state.coinNews.base)+' 相关'+(state.coinNews.loading?' …':'')+'</button>';
+  }
+  tabs.innerHTML = html;
+  var btns = tabs.querySelectorAll('.news-tab');
+  for(var i=0;i<btns.length;i++){
+    btns[i].addEventListener('click', function(){
+      var v = this.getAttribute('data-news');
+      if(v === 'all'){
+        state.newsSource='all';
+        if(!state.news.length) loadNews(); else renderNews();
+      }else if(v === 'coin'){ state.newsSource='coin'; renderNews(); }
+      renderNewsTabs();
+    });
+  }
+}
+function renderNews(){
+  var feed = $('news-feed');
+  var items;
+  if(state.newsSource === 'coin' && state.coinNews){
+    if(state.coinNews.loading){ feed.innerHTML = '<div class="feed-status">正在搜索 '+esc(state.coinNews.base)+' 相关新闻…</div>'; return; }
+    if(state.coinNews.error){ feed.innerHTML = '<div class="feed-status">新闻搜索失败，请稍后重试。</div>'; return; }
+    items = state.coinNews.items;
+    if(!items.length){ feed.innerHTML = '<div class="feed-status">未找到 '+esc(state.coinNews.base)+' 的相关新闻。</div>'; return; }
+  }else{
+    if(!state.news.length){ feed.innerHTML = '<div class="feed-status">正在加载新闻…</div>'; return; }
+    items = state.news;
+  }
+  var limit = state.config.newsLimit || 15;
+  var html = items.slice(0, limit).map(function(n){
+    return '<div class="news-item"><span class="n-src">'+esc(n.src)+'</span>'+
+      '<a class="n-title" href="'+esc(n.url)+'" target="_blank" rel="noopener">'+esc(n.title)+'</a>'+
+      '<span class="n-time">'+relTime(n.time)+'</span></div>';
+  }).join('');
+  feed.innerHTML = html;
+}
+
+/* =========================================================
+ * 数据组装、过滤、渲染
+ * =======================================================*/
+function collectItems(){
+  var out = [];
+  for(var k in state.sources){
+    var s = state.sources[k];
+    if(s.status !== 'ok') continue;
+    var def = null;
+    for(var i=0;i<SOURCE_DEFS.length;i++){ if(SOURCE_DEFS[i].key===k){ def=SOURCE_DEFS[i]; break; } }
+    if(!def) continue;
+    for(var j=0;j<s.items.length;j++){
+      var it = s.items[j];
+      if(it.source==='baseline') continue; // 基线条目不展示
+      out.push({exch:def.exch, mkt:def.mkt, srcKey:k, base:it.base, quote:it.quote, symbol:it.symbol,
+        time:it.time, source:it.source, isNew:it.isNew, status:it.status,
+        link:tradeLink(def.exch, def.mkt, it.symbol, it.base, it.quote)});
+    }
+  }
+  return out;
+}
+function inWindow(ts, windowDays){
+  if(!windowDays || windowDays<=0) return true;
+  return !!(ts && (Date.now() - ts) <= windowDays*86400000);
+}
+function applyFilters(){
+  var f = state.filters;
+  var items = collectItems();
+  var watchSet = {};
+  for(var i=0;i<state.config.watchlist.length;i++) watchSet[state.config.watchlist[i].toUpperCase()] = true;
+  items = items.filter(function(it){
+    if(f.ex !== 'all' && it.exch !== f.ex) return false;
+    if(f.mkt !== 'all' && it.mkt !== f.mkt) return false;
+    if(!inWindow(it.time, f.window)) return false;
+    if(f.excludeStable && isStablePair(it.base, it.quote)) return false;
+    if(f.watchOnly && !watchSet[String(it.base).toUpperCase()]) return false;
+    if(f.search){
+      var q = f.search.toUpperCase();
+      if(String(it.symbol).toUpperCase().indexOf(q)<0 && String(it.base).toUpperCase().indexOf(q)<0) return false;
+    }
+    return true;
+  });
+  items.sort(function(a,b){
+    if(a.time && b.time) return b.time - a.time;
+    if(a.time) return -1;
+    if(b.time) return 1;
+    return 0;
+  });
+  return items;
+}
+function countByMarket(items){
+  var c = {spot:0, futures:0, alpha:0};
+  for(var i=0;i<items.length;i++){ if(c[items[i].mkt]!==undefined) c[items[i].mkt]++; }
+  return c;
+}
+
+/* ---- 渲染：KPI ---- */
+function renderKPI(items){
+  var strip = $('kpi-strip');
+  var now = Date.now();
+  var total7 = items.length;
+  var today = items.filter(function(it){ return it.time && (now - it.time) < 86400000; }).length;
+  var byMkt = countByMarket(items);
+  var perEx = {};
+  for(var i=0;i<items.length;i++){
+    var e = items[i].exch;
+    perEx[e] = (perEx[e]||0)+1;
+  }
+  var exOrder = ['binance','okx','bybit','mexc','gate','bitget'];
+  var exHtml = exOrder.map(function(e){
+    var n = perEx[e]||0;
+    return '<div class="kpi"><div class="k-label"><span class="dot" style="background:'+EXCHANGES[e].color+'"></span>'+EXCHANGES[e].name+'</div>'+
+      '<div class="k-num">'+n+'<small>新增</small></div><div class="k-sub">'+(n?'':'近7天无新增')+'</div></div>';
+  }).join('');
+  var html =
+    '<div class="kpi"><div class="k-label"><span class="dot" style="background:var(--accent)"></span>近7天新增</div>'+
+      '<div class="k-num">'+total7+'</div><div class="k-sub">今日 '+today+' 条</div></div>'+
+    '<div class="kpi"><div class="k-label"><span class="dot" style="background:#6ee7b7"></span>现货</div>'+
+      '<div class="k-num">'+byMkt.spot+'</div><div class="k-sub">近7天</div></div>'+
+    '<div class="kpi"><div class="k-label"><span class="dot" style="background:#93c5fd"></span>合约</div>'+
+      '<div class="k-num">'+byMkt.futures+'</div><div class="k-sub">近7天</div></div>'+
+    '<div class="kpi"><div class="k-label"><span class="dot" style="background:#fcd34d"></span>Alpha / Pre-market</div>'+
+      '<div class="k-num">'+byMkt.alpha+'</div><div class="k-sub">近7天</div></div>'+
+    exHtml;
+  strip.innerHTML = html;
+}
+
+/* ---- 渲染：表格 ---- */
+var shownCount = 300;
+function renderTable(){
+  var tbody = $('pair-tbody');
+  var items = applyFilters();
+  $('table-count').textContent = '共 '+items.length+' 条';
+  var slice = items.slice(0, shownCount);
+  var html = '';
+  if(!slice.length){
+    var hint = '近'+state.filters.window+'天暂无新增';
+    if(state.filters.ex!=='all' && state.filters.mkt!=='all') hint = '该筛选条件下暂无数据';
+    html = '<tr class="empty-row"><td colspan="6"><div class="hint"><span class="big">'+hint+'</span>'+
+      '<span>提示：Binance 现货 / Bybit / Bitget 合约等源使用「快照对比」，首次访问已建立基线，之后的访问将自动发现新增。</span></div></td></tr>';
+  }else{
+    for(var i=0;i<slice.length;i++){
+      var it = slice[i];
+      var ex = EXCHANGES[it.exch];
+      var srcBadge = it.source==='official'
+        ? '<span class="badge-src official">官方</span>'
+        : (it.source==='snapshot' ? '<span class="badge-src">快照</span>' : '');
+      var newBadge = (it.isNew || (it.time && (Date.now()-it.time)<3600000 && it.source==='snapshot')) ? '<span class="badge-new">NEW</span>' : '';
+      var mktCls = it.mkt==='spot'?'mkt-spot':(it.mkt==='futures'?'mkt-fut':'mkt-alpha');
+      var mktLabel = it.mkt==='spot'?'现货':(it.mkt==='futures'?'合约':'Alpha');
+      var watched = state.config.watchlist.indexOf(String(it.base).toUpperCase()) >= 0;
+      html += '<tr class="'+(newBadge?'row-new':'')+'">'+
+        '<td class="exch"><span class="dot" style="background:'+ex.color+'"></span>'+ex.name+'</td>'+
+        '<td><span class="mkt '+mktCls+'">'+mktLabel+'</span></td>'+
+        '<td class="pair"><a href="'+esc(it.link)+'" target="_blank" rel="noopener">'+esc(pairDisplay(it.symbol))+newBadge+
+          '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><path d="M15 3h6v6"/><path d="M10 14 21 3"/></svg></a></td>'+
+        '<td class="ts">'+fmtTs(it.time)+'</td>'+
+        '<td class="ago">'+relTime(it.time)+srcBadge+'</td>'+
+        '<td style="text-align:right"><span class="row-actions">'+
+          '<button class="icon-btn '+(watched?'starred':'')+'" data-act="watch" data-base="'+esc(it.base)+'" title="关注/取消关注"><svg viewBox="0 0 24 24" fill="'+(watched?'currentColor':'none')+'" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg></button>'+
+          '<button class="icon-btn" data-act="news" data-base="'+esc(it.base)+'" data-symbol="'+esc(it.symbol)+'" title="查看该币种新闻"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 22h16a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2H8a2 2 0 0 0-2 2v16a2 2 0 0 1-4 0V9"/><path d="M18 14h-8"/><path d="M15 18h-5"/><path d="M10 6h8v4h-8V6z"/></svg></button>'+
+          '<button class="icon-btn" data-act="copy" data-symbol="'+esc(it.symbol)+'" title="复制币对"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg></button>'+
+        '</span></td></tr>';
+    }
+  }
+  tbody.innerHTML = html;
+  $('btn-more').classList.toggle('hidden', items.length <= shownCount);
+  bindRowActions();
+  renderKPI(items);
+}
+function bindRowActions(){
+  var tbody = $('pair-tbody');
+  tbody.querySelectorAll('[data-act]').forEach(function(btn){
+    btn.onclick = function(e){
+      e.stopPropagation();
+      var act = btn.getAttribute('data-act');
+      var base = btn.getAttribute('data-base');
+      var symbol = btn.getAttribute('data-symbol');
+      if(act==='watch'){ toggleWatch(base); }
+      else if(act==='news'){ loadCoinNews(base, symbol); }
+      else if(act==='copy'){
+        var s = pairDisplay(symbol);
+        if(navigator.clipboard){ navigator.clipboard.writeText(s).then(function(){ toast('已复制 '+s, 'ok'); }, function(){ fallbackCopy(s); }); }
+        else fallbackCopy(s);
+      }
+    };
+  });
+}
+function fallbackCopy(text){
+  var ta = document.createElement('textarea');
+  ta.value = text; document.body.appendChild(ta); ta.select();
+  try{ document.execCommand('copy'); toast('已复制 '+text, 'ok'); }catch(e){ toast('复制失败'); }
+  ta.remove();
+}
+function toggleWatch(base){
+  var b = String(base).toUpperCase();
+  var idx = state.config.watchlist.indexOf(b);
+  if(idx>=0) state.config.watchlist.splice(idx,1);
+  else state.config.watchlist.push(b);
+  saveConfig();
+  renderWatchChips();
+  renderTable();
+  toast(idx>=0 ? '已取消关注 '+b : '已关注 '+b+'（可同步到 Gist）', idx>=0?'':'ok');
+}
+function loadMore(){
+  shownCount += 300;
+  renderTable();
+}
+
+/* ---- 渲染：状态栏 ---- */
+function renderStatusBar(){
+  var led = $('led');
+  var txt = $('src-status-text');
+  var defs = SOURCE_DEFS.filter(isSourceEnabled);
+  var ok = 0, err = 0, loading = 0;
+  for(var i=0;i<defs.length;i++){
+    var s = state.sources[defs[i].key];
+    if(!s || s.status==='loading') loading++;
+    else if(s.status==='ok') ok++;
+    else err++;
+  }
+  var total = defs.length;
+  if(loading){ led.className='led'; txt.textContent = '加载中 '+ok+'/'+total; }
+  else if(err===0){ led.className='led ok'; txt.textContent = ok+'/'+total+' 数据源在线'; }
+  else if(err<total){ led.className='led part'; txt.textContent = ok+'/'+total+' 在线 · '+err+' 受限'; }
+  else { led.className='led err'; txt.textContent = '数据源全部不可用'; }
+  $('last-update').textContent = state.lastFullRefresh ? '更新于 '+fmtTs(state.lastFullRefresh) : '';
+}
+
+/* ---- 渲染：公告链接 ---- */
+function renderAnnLinks(){
+  var box = $('ann-links');
+  var html = '';
+  for(var k in EXCHANGES){
+    var ex = EXCHANGES[k];
+    html += '<a class="ann-link" href="'+esc(ex.annUrl)+'" target="_blank" rel="noopener">'+
+      '<span class="dot" style="background:'+ex.color+'"></span><span class="name">'+ex.name+' 公告</span>'+
+      '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><path d="M15 3h6v6"/><path d="M10 14 21 3"/></svg></a>';
+  }
+  box.innerHTML = html;
+}
+
+/* ---- 渲染：设置 ---- */
+function renderWatchChips(){
+  var box = $('watch-chips');
+  var html = state.config.watchlist.map(function(b){
+    return '<span class="watch-chip">'+esc(b)+' <button class="rm" data-rm="'+esc(b)+'" title="移除">×</button></span>';
+  }).join('') || '<span class="help">尚未关注任何币种。</span>';
+  box.innerHTML = html;
+  box.querySelectorAll('[data-rm]').forEach(function(btn){
+    btn.onclick = function(){
+      var b = btn.getAttribute('data-rm');
+      var idx = state.config.watchlist.indexOf(b);
+      if(idx>=0) state.config.watchlist.splice(idx,1);
+      saveConfig(); renderWatchChips(); renderTable();
+    };
+  });
+}
+function renderExchSwitches(){
+  var box = $('exch-switches');
+  var html = '';
+  for(var k in EXCHANGES){
+    var ex = EXCHANGES[k];
+    var on = state.config.enabledExchanges.indexOf(k)>=0;
+    var srcInfo = '现货:'+(ex.spot.official?'官方':'快照')+' · 合约:'+(ex.futures.official?'官方':'快照');
+    html += '<label class="sw-row"><input type="checkbox" data-exch="'+k+'" '+(on?'checked':'')+'>'+
+      '<span class="dot" style="background:'+ex.color+'"></span>'+ex.name+
+      '<span class="sw-label">'+srcInfo+'</span></label>';
+  }
+  box.innerHTML = html;
+  box.querySelectorAll('input[type=checkbox]').forEach(function(cb){
+    cb.onchange = function(){
+      var k = cb.getAttribute('data-exch');
+      var idx = state.config.enabledExchanges.indexOf(k);
+      if(cb.checked && idx<0) state.config.enabledExchanges.push(k);
+      if(!cb.checked && idx>=0) state.config.enabledExchanges.splice(idx,1);
+      saveConfig();
+      refreshEnabledSourcesFor(k).then(function(){ renderStatusBar(); });
+    };
+  });
+}
+function openSettings(){
+  $('settings-modal').classList.remove('hidden');
+  $('inp-gist-id').value = (loadGistInfo().id||'');
+  $('inp-gist-file').value = (loadGistInfo().file||'');
+  $('inp-gist-token').value = (loadGistInfo().token||'');
+  renderWatchChips();
+  renderExchSwitches();
+}
+function closeSettings(){ $('settings-modal').classList.add('hidden'); }
+
+/* =========================================================
+ * GitHub Gist 同步
+ * =======================================================*/
+function loadGistInfo(){
+  try{ return JSON.parse(localStorage.getItem(LS_GIST)||'{}'); }catch(e){ return {}; }
+}
+function saveGistInfo(info){
+  localStorage.setItem(LS_GIST, JSON.stringify(info));
+}
+function gistStatus(msg, isErr){
+  var el = $('gist-status');
+  el.textContent = msg;
+  el.style.color = isErr ? 'var(--danger)' : 'var(--text-dim)';
+}
+function gistPull(){
+  var info = {id:$('inp-gist-id').value.trim(), file:$('inp-gist-file').value.trim(), token:$('inp-gist-token').value.trim()};
+  if(!info.id){ gistStatus('请先填写 Gist ID。', true); return; }
+  saveGistInfo(info);
+  gistStatus('正在从 Gist 拉取配置…');
+  var headers = {};
+  if(info.token) headers['Authorization'] = 'Bearer '+info.token;
+  fetchJson('https://api.github.com/gists/'+encodeURIComponent(info.id), {headers: headers})
+    .then(function(g){
+      var files = g.files || {};
+      var chosen = info.file ? files[info.file] : null;
+      if(!chosen){
+        // 找第一个 .json 文件
+        for(var k in files){ if(/\.json$/i.test(k)){ chosen = files[k]; break; } }
+      }
+      if(!chosen || !chosen.content){ gistStatus('Gist 中未找到配置文件。', true); return; }
+      var cfg;
+      try{ cfg = JSON.parse(chosen.content); }catch(e){ gistStatus('配置文件不是合法 JSON：'+e.message, true); return; }
+      if(!cfg || typeof cfg !== 'object'){ gistStatus('配置文件格式错误。', true); return; }
+      // 合并
+      var base = JSON.parse(JSON.stringify(DEFAULT_CONFIG));
+      for(var kk in base){ if(cfg[kk] !== undefined) base[kk] = cfg[kk]; }
+      state.config = base;
+      if(!info.file && chosen) info.file = chosen.filename;
+      saveGistInfo(info);
+      saveConfig();
+      syncFilterControls();
+      gistStatus('已从 Gist 拉取配置：窗口 '+base.timeWindowDays+' 天 · 关注 '+base.watchlist.length+' 个币种 · 交易所 '+base.enabledExchanges.length+' 家\n文件：'+(chosen.filename||'')+'（'+chosen.size+' bytes）');
+      renderWatchChips(); renderExchSwitches(); refreshAll(false);
+      toast('配置已同步', 'ok');
+    })
+    .catch(function(e){
+      gistStatus('拉取失败：'+(e.message||e)+'。公开 Gist 无需 Token；若为私有 Gist 请填写 Token。', true);
+    });
+}
+function gistPush(){
+  var info = {id:$('inp-gist-id').value.trim(), file:$('inp-gist-file').value.trim() || 'uexradar-config.json', token:$('inp-gist-token').value.trim()};
+  if(!info.id){ gistStatus('请先填写 Gist ID。', true); return; }
+  if(!info.token){ gistStatus('写回 Gist 需要 Personal Access Token（需 gist 权限）。', true); return; }
+  saveGistInfo(info);
+  saveConfig();
+  gistStatus('正在推送配置到 Gist…');
+  var body = {files:{}};
+  body.files[info.file] = {content: JSON.stringify(state.config, null, 2)};
+  fetchJson('https://api.github.com/gists/'+encodeURIComponent(info.id), {
+    method:'PATCH',
+    headers:{'Authorization':'Bearer '+info.token, 'Content-Type':'application/json'},
+    body: JSON.stringify(body)
+  }).then(function(g){
+    var f = (g.files||{})[info.file] || {};
+    gistStatus('已推送成功。Gist 更新于 '+fmtTs(Date.now())+'，文件 '+info.file+'（'+f.size+' bytes）。');
+    toast('配置已同步到 Gist', 'ok');
+  }).catch(function(e){
+    gistStatus('推送失败：'+(e.message||e)+'。请检查 Token 是否有效且勾选了 gist 权限。', true);
+  });
+}
+function gistReset(){
+  if(!window.confirm('确认恢复默认配置？本地设置与关注列表将被清空。')) return;
+  state.config = JSON.parse(JSON.stringify(DEFAULT_CONFIG));
+  saveConfig();
+  gistStatus('已恢复默认配置。');
+  renderWatchChips(); renderExchSwitches(); renderAll();
+}
+
+/* =========================================================
+ * 汇总渲染
+ * =======================================================*/
+function renderAll(){
+  renderStatusBar();
+  renderTable();
+  renderAnnLinks();
+  renderAnnouncements();
+  renderNewsTabs();
+  renderNews();
+}
+
+/* =========================================================
+ * 事件绑定与初始化
+ * =======================================================*/
+function bindEvents(){
+  $('btn-refresh').addEventListener('click', function(){ shownCount=300; refreshAll(true); });
+  $('btn-settings').addEventListener('click', openSettings);
+  $('btn-close-settings').addEventListener('click', closeSettings);
+  $('btn-settings-done').addEventListener('click', closeSettings);
+  $('btn-gist-pull').addEventListener('click', gistPull);
+  $('btn-gist-push').addEventListener('click', gistPush);
+  $('btn-gist-reset').addEventListener('click', gistReset);
+  $('btn-more').addEventListener('click', loadMore);
+  $('btn-watch-add').addEventListener('click', addWatchFromInput);
+  $('inp-watch').addEventListener('keydown', function(e){ if(e.key==='Enter') addWatchFromInput(); });
+  $('inp-search').addEventListener('input', debounce(function(){
+    state.filters.search = $('inp-search').value.trim();
+    shownCount = 300; renderTable();
+  }, 250));
+  $('sel-window').addEventListener('change', function(){
+    state.filters.window = +this.value;
+    shownCount = 300; renderTable();
+  });
+  $('chk-watch').addEventListener('change', function(){
+    state.filters.watchOnly = this.checked; shownCount = 300; renderTable();
+  });
+  $('chk-stable').addEventListener('change', function(){
+    state.filters.excludeStable = this.checked; shownCount = 300; renderTable();
+  });
+  // 交易所 chips
+  var exChips = document.querySelectorAll('#filter-bar [data-ex]');
+  for(var i=0;i<exChips.length;i++){
+    exChips[i].addEventListener('click', function(){
+      var v = this.getAttribute('data-ex');
+      state.filters.ex = v;
+      exChips.forEach(function(c){ c.classList.toggle('on', c.getAttribute('data-ex')===v); });
+      shownCount = 300; renderTable();
+    });
+  }
+  // 市场 chips
+  var mktChips = document.querySelectorAll('#filter-bar [data-mkt]');
+  for(var j=0;j<mktChips.length;j++){
+    mktChips[j].addEventListener('click', function(){
+      var v = this.getAttribute('data-mkt');
+      state.filters.mkt = v;
+      mktChips.forEach(function(c){ c.classList.toggle('on', c.getAttribute('data-mkt')===v); });
+      shownCount = 300; renderTable();
+    });
+  }
+  // 点击遮罩关闭
+  $('settings-modal').addEventListener('click', function(e){
+    if(e.target === this) closeSettings();
+  });
+  document.addEventListener('keydown', function(e){
+    if(e.key==='Escape') closeSettings();
+  });
+  window.addEventListener('error', function(e){
+    // 页面级兜底
+  });
+}
+function addWatchFromInput(){
+  var inp = $('inp-watch');
+  var v = inp.value.trim().toUpperCase();
+  if(!v) return;
+  if(/^[A-Z0-9]{2,12}$/.test(v)){
+    if(state.config.watchlist.indexOf(v)<0) state.config.watchlist.push(v);
+    saveConfig(); renderWatchChips(); renderTable();
+    inp.value = '';
+    toast('已关注 '+v, 'ok');
+  }else{
+    toast('请输入 2-12 位字母数字币种代码', 'err');
+  }
+}
+function init(){
+  state.filters.window = state.config.timeWindowDays || 7;
+  syncFilterControls();
+  bindEvents();
+  renderStatusBar();
+  renderTable();
+  renderAnnLinks();
+  renderWatchChips();
+  refreshAll(false);
+  // 定时自动刷新（每 30 分钟）
+  setInterval(function(){ shownCount=300; refreshAll(false); }, 30*60*1000);
+}
+function syncFilterControls(){
+  var w = state.config.timeWindowDays;
+  var sel = $('sel-window');
+  var found = false;
+  for(var i=0;i<sel.options.length;i++){ if(+sel.options[i].value===w){ sel.selectedIndex=i; found=true; break; } }
+  if(!found && w>0){
+    var opt = document.createElement('option');
+    opt.value = String(w); opt.textContent = '最近 '+w+' 天';
+    sel.appendChild(opt); sel.value = String(w);
+  }
+  $('chk-stable').checked = state.config.excludeStable !== false;
+  state.filters.excludeStable = $('chk-stable').checked;
+}
+document.addEventListener('DOMContentLoaded', init);
+</script>
+</body>
+</html>
