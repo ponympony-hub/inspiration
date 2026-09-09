@@ -1237,6 +1237,8 @@
       setText(text, detail) {
         this.text = text;
         this.detail = detail || '';
+        // 文本变化时重置 baseRadius，让 computeLayout 基于新文本重新计算合适尺寸（可缩小）
+        this.baseRadius = Math.max(38, Math.min(85, text.length * 6 + Math.random() * 24));
         this.computeLayout();
       }
 
@@ -1575,8 +1577,8 @@
         : `${inCategory} 个灵感（共 ${bubbles.length}）`;
     }
 
-    function showToast(text) {
-      toastText.textContent = `已删除「${text.length > 12 ? text.slice(0, 12) + '…' : text}」`;
+    function showToast(text, customMsg) {
+      toastText.textContent = customMsg || `已删除「${text.length > 12 ? text.slice(0, 12) + '…' : text}」`;
       toast.classList.add('visible');
       clearTimeout(toastTimer);
       toastTimer = setTimeout(() => toast.classList.remove('visible'), 4000);
@@ -1584,7 +1586,11 @@
 
     toastUndo.addEventListener('click', () => {
       if (recentlyDeleted) {
-        bubbles.push(recentlyDeleted);
+        if (Array.isArray(recentlyDeleted)) {
+          bubbles = recentlyDeleted;  // 恢复"清除全部"前的完整数组
+        } else {
+          bubbles.push(recentlyDeleted);
+        }
         recentlyDeleted = null;
         updateCounter();
         scheduleSave();
@@ -1596,6 +1602,7 @@
     // ---------- 持久化 ----------
     function scheduleSave() {
       clearTimeout(saveTimer);
+      markLocalModified();
       saveTimer = setTimeout(() => { saveToStorage(); saveCategories(); }, 400);
     }
 
@@ -1607,15 +1614,18 @@
     }
 
     function saveToStorage() {
+      markLocalModified();
       const data = bubbles.map(bubbleToData);
       try { localStorage.setItem(STORAGE_KEY, JSON.stringify(data)); } catch (e) {}
     }
 
     function saveSettings() {
+      markLocalModified();
       try { localStorage.setItem(SETTINGS_KEY, JSON.stringify({ speedFactor, textRatio, sizeRatio })); } catch (e) {}
     }
 
     function saveCategories() {
+      markLocalModified();
       try { localStorage.setItem(CATEGORY_KEY, JSON.stringify({ categories, activeCategory, gridState })); } catch (e) {}
     }
 
@@ -2053,7 +2063,11 @@
       wordInput.focus();
     });
 
-    window.addEventListener('beforeunload', saveToStorage);
+    window.addEventListener('beforeunload', () => {
+      saveToStorage();
+      saveSettings();
+      saveCategories();
+    });
 
     // ---------- 速度 / 文字占比 滑动条 ----------
     speedSlider.addEventListener('input', () => {
@@ -2420,15 +2434,19 @@
     // ---------- 清除所有气泡 ----------
     btnClearBubbles.addEventListener('click', () => {
       if (!bubbles.length) return;
-      if (!confirm(`确定要清除全部 ${bubbles.length} 个灵感气泡吗？此操作不可撤销。`)) return;
+      const count = bubbles.length;
+      if (!confirm(`确定要清除全部 ${count} 个灵感气泡吗？可在 4 秒内点击撤销恢复。`)) return;
+      recentlyDeleted = bubbles.slice();  // 保存副本用于撤销
       bubbles = [];
-      recentlyDeleted = null;
       updateCounter();
       saveToStorage();
+      showToast(null, `已清除全部 ${count} 个灵感气泡`);
     });
 
     // ---------- 云端同步（GitHub Gist）----------
-    const GIST_ID = '46a6da276fee57fd01c48d9fd2ec32a7';
+    function getGistId() { try { return localStorage.getItem('inspiration-gist-id'); } catch(e) { return null; } }
+    function setGistId(id) { try { localStorage.setItem('inspiration-gist-id', id); } catch(e) {} }
+    function markLocalModified() { try { localStorage.setItem('inspiration-local-modified', new Date().toISOString()); } catch(e) {} }
     const btnCloudSync = document.getElementById('btn-cloud-sync');
     const syncOverlay = document.getElementById('sync-modal-overlay');
     const syncSetupEl = document.getElementById('sync-setup');
@@ -2453,10 +2471,12 @@
     }
 
     async function gistRead() {
+      const gistId = getGistId();
+      if (!gistId) throw new Error('未配置云端存储空间，请先开始同步');
       const token = getSyncToken();
       const headers = { 'Accept': 'application/vnd.github.v3+json' };
       if (token) headers['Authorization'] = 'token ' + token;
-      const res = await fetch('https://api.github.com/gists/' + GIST_ID, { headers });
+      const res = await fetch('https://api.github.com/gists/' + gistId, { headers });
       if (!res.ok) throw new Error('HTTP ' + res.status);
       const gist = await res.json();
       const raw = gist.files && gist.files['bubbles.json'] && gist.files['bubbles.json'].content;
@@ -2465,14 +2485,36 @@
     }
 
     async function gistWrite(payload) {
+      const gistId = getGistId();
+      if (!gistId) throw new Error('未配置云端存储空间，请先开始同步');
       const token = getSyncToken();
       if (!token) throw new Error('未设置 Token');
-      const res = await fetch('https://api.github.com/gists/' + GIST_ID, {
+      const res = await fetch('https://api.github.com/gists/' + gistId, {
         method: 'PATCH',
         headers: { 'Authorization': 'token ' + token, 'Content-Type': 'application/json', 'Accept': 'application/vnd.github.v3+json' },
         body: JSON.stringify({ files: { 'bubbles.json': { content: JSON.stringify(payload) } } })
       });
       if (!res.ok) throw new Error('HTTP ' + res.status);
+    }
+
+    // 首次同步时为当前用户创建独立的私密 Gist，避免所有用户共用同一个存储空间
+    async function gistCreate(initialPayload) {
+      const token = getSyncToken();
+      if (!token) throw new Error('未设置 Token');
+      const res = await fetch('https://api.github.com/gists', {
+        method: 'POST',
+        headers: { 'Authorization': 'token ' + token, 'Content-Type': 'application/json', 'Accept': 'application/vnd.github.v3+json' },
+        body: JSON.stringify({
+          description: '灵感泡泡同步数据',
+          public: false,
+          files: { 'bubbles.json': { content: JSON.stringify(initialPayload) } }
+        })
+      });
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      const gist = await res.json();
+      if (!gist.id) throw new Error('创建云端存储空间失败：未返回 ID');
+      setGistId(gist.id);
+      return gist.id;
     }
 
     function applyRemote(remote) {
@@ -2489,6 +2531,7 @@
       }
       if (remote.savedAt) {
         try { localStorage.setItem('inspiration-last-sync', remote.savedAt); } catch(e) {}
+        try { localStorage.setItem('inspiration-local-modified', remote.savedAt); } catch(e) {}
         updateSyncTime();
       }
       return applied;
@@ -2511,7 +2554,8 @@
 
     function openSyncModal() {
       syncOverlay.classList.add('open');
-      if (getSyncToken()) {
+      // 需要同时有 Token 和独立 Gist ID 才算完成配置（旧版本共用硬编码 Gist 的用户需重新走一次 setup 以迁移到独立 Gist）
+      if (getSyncToken() && getGistId()) {
         syncSetupEl.style.display = 'none';
         syncPanelEl.style.display = '';
         updateSyncTime();
@@ -2535,7 +2579,12 @@
       setSyncMsg('正在验证…');
       syncStartBtn.disabled = true;
       try {
-        // Try pull first
+        // 每个用户独立 Gist：首次同步时自动创建私密 Gist，避免数据互相覆盖
+        if (!getGistId()) {
+          setSyncMsg('正在创建云端存储空间…');
+          await gistCreate({ bubbles: [], settings: {}, categories: {}, savedAt: new Date().toISOString() });
+        }
+
         const remote = await gistRead();
         const hasRemote = remote && Array.isArray(remote.bubbles) && remote.bubbles.length > 0;
         const localRaw = (() => { try { return localStorage.getItem(STORAGE_KEY); } catch(e){} })();
@@ -2544,16 +2593,27 @@
         const hasLocal = localBubbles.length > 0;
 
         if (hasRemote && hasLocal) {
-          // Both exist: push local to cloud (local is source of truth on this device)
-          await gistWrite(collectSyncData());
-          setSyncMsg('✓ 已将本地数据推送到云端', 'ok');
+          // 冲突检测：比较双方最后修改时间，以较新者为准
+          const localModified = localStorage.getItem('inspiration-local-modified');
+          const remoteNewer = !!(remote.savedAt && localModified && new Date(remote.savedAt) > new Date(localModified));
+          if (remoteNewer) {
+            applyRemote(remote);
+            setSyncMsg('✓ 云端数据较新，已拉取，刷新页面生效', 'ok');
+          } else {
+            await gistWrite(collectSyncData());
+            const now = new Date().toISOString();
+            try { localStorage.setItem('inspiration-last-sync', now); } catch(e) {}
+            try { localStorage.setItem('inspiration-local-modified', now); } catch(e) {}
+            setSyncMsg('✓ 本地数据较新，已推送到云端', 'ok');
+          }
         } else if (hasRemote && !hasLocal) {
-          // Only remote exists: apply it
           applyRemote(remote);
           setSyncMsg('✓ 已从云端拉取数据，刷新页面生效', 'ok');
         } else if (!hasRemote && hasLocal) {
-          // Only local exists: push it
           await gistWrite(collectSyncData());
+          const now = new Date().toISOString();
+          try { localStorage.setItem('inspiration-last-sync', now); } catch(e) {}
+          try { localStorage.setItem('inspiration-local-modified', now); } catch(e) {}
           setSyncMsg('✓ 已将本地数据推送到云端', 'ok');
         } else {
           await gistWrite({ bubbles: [], settings: {}, categories: {}, savedAt: new Date().toISOString() });
@@ -2594,7 +2654,9 @@
       try {
         saveToStorage(); saveSettings(); saveCategories();
         await gistWrite(collectSyncData());
-        try { localStorage.setItem('inspiration-last-sync', new Date().toISOString()); } catch(e) {}
+        const now = new Date().toISOString();
+        try { localStorage.setItem('inspiration-last-sync', now); } catch(e) {}
+        try { localStorage.setItem('inspiration-local-modified', now); } catch(e) {}
         updateSyncTime();
         setSyncMsg('✓ 已推送到云端', 'ok');
       } catch(e) { setSyncMsg('✗ 推送失败：' + e.message, 'err'); }
