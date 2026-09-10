@@ -1040,7 +1040,8 @@
       return Math.max(r, Math.min(size - r, v));
     }
 
-    window.addEventListener('resize', () => {
+    // 统一的尺寸变更处理：窗口 resize、浏览器缩放（可能不触发 resize 事件）、容器布局变化都走这里
+    function handleResize() {
       width = canvas.width = container.clientWidth;
       height = canvas.height = container.clientHeight;
       // 缩放/窗口变化后，把所有气泡夹回新的可视范围内（同时兼顾其所属隔离网格象限边界），避免超出边界
@@ -1060,7 +1061,8 @@
       });
       positionGridLines(getGrid(activeCategory));
       positionQuadrantLabels(getGrid(activeCategory));
-    });
+    }
+    window.addEventListener('resize', handleResize);
 
     // ---------- 颜色工具 ----------
     function hexToRgb(hex) {
@@ -1536,6 +1538,11 @@
     }
 
     function animate() {
+      // 兜底检测：浏览器缩放（Cmd+/双指放大）等场景可能不触发 window.resize，
+      // 每帧对比容器实际尺寸，一旦变化立即纠正 canvas 尺寸并把气泡夹回可视范围
+      if (container.clientWidth !== width || container.clientHeight !== height) {
+        handleResize();
+      }
       ctx.clearRect(0, 0, width, height);
       const visible = visibleBubbles();
       handleCollisions(visible);
