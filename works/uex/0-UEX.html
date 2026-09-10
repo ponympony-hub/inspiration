@@ -636,6 +636,66 @@
             align-items: center;
             justify-content: center;
         }
+
+        /* ── 标的分组（分类） ── */
+        .category-bar {
+            display: flex;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 6px;
+            margin-bottom: 10px;
+            padding: 8px 14px;
+            background: var(--panel-bg);
+            border-radius: 8px;
+        }
+
+        .cat-chip {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            padding: 4px 12px;
+            border: 1px solid var(--border-color);
+            border-radius: 14px;
+            font-size: 12px;
+            color: var(--text-main);
+            background: var(--card-bg);
+            cursor: pointer;
+            user-select: none;
+            white-space: nowrap;
+            transition: background 0.15s, color 0.15s, border-color 0.15s;
+        }
+        .cat-chip:hover { border-color: var(--primary-blue); color: var(--primary-blue); }
+        .cat-chip.active { background: var(--primary-blue); border-color: var(--primary-blue); color: #fff; }
+        .cat-chip .count { font-size: 10px; opacity: 0.7; }
+        .cat-chip.active .count { opacity: 0.95; }
+        .cat-chip.action { border-style: dashed; color: var(--text-sub); font-weight: 500; }
+        .cat-chip.action:hover { color: var(--primary-blue); }
+
+        .cat-tag {
+            display: inline-block;
+            font-size: 10px;
+            font-weight: 500;
+            padding: 1px 5px;
+            border-radius: 3px;
+            background: var(--panel-bg);
+            color: var(--text-sub);
+            border: 1px solid var(--border-color);
+            vertical-align: middle;
+            line-height: 1.4;
+        }
+
+        .row-ctx-menu .ctx-item.ctx-label {
+            pointer-events: none;
+            color: var(--text-mute);
+            font-size: 11px;
+            font-weight: 600;
+            padding: 6px 12px 3px;
+        }
+        .row-ctx-menu .ctx-item.ctx-label:hover { background: transparent; }
+        .row-ctx-menu .ctx-cat-scroll { max-height: 170px; overflow-y: auto; }
+
+        #categoryManageListBody { max-height: 300px; overflow-y: auto; margin-bottom: 4px; }
+        .cat-manage-item .qle-count { color: var(--text-mute); font-size: 12px; margin-left: 4px; }
     </style>
 </head>
 <body>
@@ -674,6 +734,9 @@
                 <div id="colPanel" class="col-panel" style="display:none"></div>
             </div>
         </div>
+
+        <!-- ── 顶部分类条：点击筛选标的 ── -->
+        <div class="category-bar" id="categoryBar"></div>
 
         <table id="mainTable">
             <thead><tr id="theadRow"></tr></thead>
@@ -747,7 +810,7 @@
             <span class="modal-close" onclick="closeGistConfigModal()">✕</span>
         </div>
         <div class="gist-config-body">
-            <div class="detail-tip" style="margin-bottom:6px">同步范围：币种列表、笔记、亮暗主题、列显示设置、顶部快捷链接</div>
+            <div class="detail-tip" style="margin-bottom:6px">同步范围：币种列表、标的分组、笔记、亮暗主题、列显示设置、顶部快捷链接</div>
             <label class="gist-field-label">Personal Access Token（需 gist 权限）</label>
             <input type="text" id="gistTokenInput" placeholder="ghp_xxxxxxxxxxxx" style="width:100%;text-transform:none">
             <label class="gist-field-label">Gist ID（留空则首次同步时自动创建）</label>
@@ -777,6 +840,22 @@
             <input type="text" id="quickLinkUrlInput" placeholder="https://..." style="flex:1;text-transform:none">
             <button class="sort-btn" id="quickLinkSubmitBtn" onclick="submitQuickLink()">添加</button>
             <button class="sort-btn" onclick="cancelQuickLinkEdit()" id="quickLinkCancelBtn" style="display:none">取消</button>
+        </div>
+    </div>
+</div>
+
+<!-- ── 分类管理 Modal：新建 / 改名 / 删除 ── -->
+<div id="categoryModal" class="modal-overlay" style="display:none" onclick="if(event.target===this)closeCategoryModal()">
+    <div class="modal-box" style="width:440px">
+        <div class="modal-header">
+            <span>🗂 分类管理</span>
+            <span class="modal-close" onclick="closeCategoryModal()">✕</span>
+        </div>
+        <div class="detail-tip" style="margin-bottom:8px">点击名称可改名；删除分类后其下标的自动归入「未分类」；顶部分类条可点击筛选</div>
+        <div id="categoryManageListBody"></div>
+        <div class="quick-link-edit-row" style="margin-top:10px">
+            <input type="text" id="categoryNameInput" placeholder="新分类名称，如: 核心仓位" style="flex:1;text-transform:none" onkeydown="if(event.key==='Enter')submitCategoryName()">
+            <button class="sort-btn" onclick="submitCategoryName()">添加</button>
         </div>
     </div>
 </div>
@@ -1042,8 +1121,9 @@
         renderTable();
     }
 
-    function sortedRows() {
-        const base = sortKey === 'default' ? [...rows] : [...rows].sort((a, b) => {
+    function sortedRows(list) {
+        const src = list || rows;
+        const base = sortKey === 'default' ? [...src] : [...src].sort((a, b) => {
             const da = cache[a.id], db = cache[b.id];
             if (!da && !db) return 0;
             if (!da) return 1;
@@ -1071,9 +1151,16 @@
         if (!row) return;
         const menu = document.getElementById('rowCtxMenu');
         const noteCount = getNotes(row.sym).length;
+        const cats = loadCategories();
+        const catItems = cats.map(c =>
+            `<div class="ctx-item" onclick="setRowCategory('${id}','${c.id}');closeRowCtxMenu()">${row.catId === c.id ? '●' : '○'} ${escapeHtml(c.name)}</div>`
+        ).join('');
         menu.innerHTML =
             `<div class="ctx-item" onclick="togglePin('${id}');closeRowCtxMenu()">${row.pinned ? '取消置顶' : '置顶'}</div>` +
             `<div class="ctx-item" onclick="openNotesModal('${row.sym}');closeRowCtxMenu()">笔记${noteCount ? ` (${noteCount})` : ''}</div>` +
+            `<div class="ctx-item ctx-label">分类</div>` +
+            `<div class="ctx-item" onclick="setRowCategory('${id}','');closeRowCtxMenu()">${row.catId ? '○' : '●'} 未分类</div>` +
+            (catItems ? `<div class="ctx-cat-scroll">${catItems}</div>` : '') +
             `<div class="ctx-item danger" onclick="removeRow('${id}');closeRowCtxMenu()">删除</div>`;
         menu.style.display = 'block';
         const menuW = menu.offsetWidth, menuH = menu.offsetHeight;
@@ -1815,19 +1902,20 @@
     // ── 全量设置的序列化 / 应用 ─────────────────────────────────────
     function serializeSettings() {
         return {
-            rows: rows.map(r => ({ sym: r.sym, exchange: r.exchange, pinned: !!r.pinned })),
+            rows: rows.map(r => ({ sym: r.sym, exchange: r.exchange, pinned: !!r.pinned, catId: r.catId || '' })),
             visibleCols,
             customCols: CUSTOM_COLS,
             theme: localStorage.getItem('uex-theme') || 'light',
             notes: loadAllNotes(),
             quickLinks: loadQuickLinks(),
+            categories: loadCategories(),
         };
     }
 
     function applySettings(settings) {
         if (!settings) return;
         if (Array.isArray(settings.rows)) {
-            rows = settings.rows.map(r => ({ id: r.sym + '@' + (r.exchange || 'auto') + '_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6), sym: r.sym, exchange: r.exchange || '', pinned: !!r.pinned }));
+            rows = settings.rows.map(r => ({ id: r.sym + '@' + (r.exchange || 'auto') + '_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6), sym: r.sym, exchange: r.exchange || '', pinned: !!r.pinned, catId: r.catId || '' }));
         }
         if (Array.isArray(settings.visibleCols)) visibleCols = settings.visibleCols;
         if (Array.isArray(settings.customCols)) {
@@ -1840,10 +1928,16 @@
         if (settings.theme) { applyTheme(settings.theme); localStorage.setItem('uex-theme', settings.theme); }
         if (settings.notes) saveAllNotes(settings.notes);
         if (Array.isArray(settings.quickLinks)) saveQuickLinks(settings.quickLinks);
+        if (Array.isArray(settings.categories)) {
+            localStorage.setItem(CATEGORIES_KEY, JSON.stringify(settings.categories));
+            activeCategory = 'all';
+        }
 
         renderHeader();
         renderTable();
         renderQuickLinksBar();
+        renderCategoryBar();
+        if (document.getElementById('categoryModal').style.display === 'flex') renderCategoryManageList();
         cache && Object.keys(cache).forEach(k => delete cache[k]);
         fetchAll();
     }
@@ -2047,7 +2141,8 @@
     // ── 行渲染 ────────────────────────────────────────────────────
     function renderTable() {
         const tbody = document.getElementById('tableBody');
-        const ordered = sortedRows();
+        const ordered = sortedRows(rowsForDisplay());
+        const cats = loadCategories();
         tbody.innerHTML = ordered.map(row => {
             const { id, sym, exchange, pinned } = row;
             const d = cache[id];
@@ -2058,6 +2153,8 @@
             const ctxAttr = `oncontextmenu="openRowCtxMenu(event,'${id}')"`;
             const pinBadge = pinned ? `<span class="pin-badge" title="已置顶">📌</span>` : '';
             const noteBadge = getNotes(sym).length ? `<span class="note-badge" title="有笔记，点击查看" onclick="event.stopPropagation();openNotesModal('${sym}')">📝</span>` : '';
+            const rowCat = cats.find(c => c.id === row.catId);
+            const catTag = rowCat ? `<span class="cat-tag" title="分类: ${escapeHtml(rowCat.name)}">${escapeHtml(rowCat.name)}</span>` : '';
 
             // 链上行：单独一行展示链上详情
             if (exchange === 'binance-chain' || src === 'binance-chain') {
@@ -2071,7 +2168,7 @@
                         `<div class="chain-inline" ${ctxAttr}>` +
                         `${pinBadge}` +
                         `<a class="sym-link" href="${alphaUrl}" target="_blank" rel="noopener">${sym}</a>` +
-                        `${noteBadge}` +
+                        `${noteBadge}${catTag}` +
                         `<span class="chain-inline-label">链上</span>` +
                         `<span class="chain-inline-loading">查询中...</span>` +
                         `${detailBtn}` +
@@ -2092,7 +2189,7 @@
                     `<div class="chain-inline" ${ctxAttr}>` +
                     `${pinBadge}` +
                     `<a class="sym-link" href="${alphaUrl}" target="_blank" rel="noopener">${sym}</a>` +
-                    `${noteBadge}` +
+                    `${noteBadge}${catTag}` +
                     `<span class="chain-inline-label">链上</span>` +
                     `<span class="price-val" style="font-size:13px">$${fmtPrice(d.price)}</span>` +
                     `<span class="${changeClass}" style="font-size:12px">${changeStr}</span>` +
@@ -2118,12 +2215,12 @@
                 }
 
                 if (!d) {
-                    if (key === 'symbol') return `<td title="${title}"><div class="symbol-cell" ${ctxAttr}>${pinBadge}<a class="sym-link" href="${chartUrl}" target="_blank" rel="noopener">${sym}</a>${noteBadge}${exchange ? srcTag(exchange) : ''}</div></td>`;
+                    if (key === 'symbol') return `<td title="${title}"><div class="symbol-cell" ${ctxAttr}>${pinBadge}<a class="sym-link" href="${chartUrl}" target="_blank" rel="noopener">${sym}</a>${noteBadge}${catTag}${exchange ? srcTag(exchange) : ''}</div></td>`;
                     return `<td class="neutral" title="${title}">--</td>`;
                 }
 
                 if (key === 'symbol') {
-                    return `<td title="${title}"><div class="symbol-cell" ${ctxAttr}>${pinBadge}<a class="sym-link" href="${chartUrl}" target="_blank" rel="noopener">${sym}</a>${noteBadge}${srcTag(src)}</div></td>`;
+                    return `<td title="${title}"><div class="symbol-cell" ${ctxAttr}>${pinBadge}<a class="sym-link" href="${chartUrl}" target="_blank" rel="noopener">${sym}</a>${noteBadge}${catTag}${srcTag(src)}</div></td>`;
                 }
 
                 if (key === 'price') {
@@ -2858,7 +2955,8 @@
         const id = sym + '@' + (exchange || 'auto') + '_' + Date.now();
 
         input.value = '';
-        rows.push({ id, sym, exchange, pinned: true });
+        const catId = loadCategories().some(c => c.id === activeCategory) ? activeCategory : '';
+        rows.push({ id, sym, exchange, pinned: true, catId });
         renderTable();
         autoSyncSettingsToGist();
 
@@ -2883,6 +2981,176 @@
         autoSyncSettingsToGist();
     }
 
+    // ── 标的分组（分类）：顶部筛选 + 增删改查 + 右键设置 + Gist 同步 ──
+    const CATEGORIES_KEY = 'uex-categories';
+    let activeCategory = 'all'; // 'all' | 'none' | 分类 id
+
+    function loadCategories() {
+        try {
+            const raw = localStorage.getItem(CATEGORIES_KEY);
+            const arr = raw ? JSON.parse(raw) : [];
+            return Array.isArray(arr) ? arr : [];
+        } catch { return []; }
+    }
+
+    function saveCategories(list) {
+        localStorage.setItem(CATEGORIES_KEY, JSON.stringify(list));
+        renderCategoryBar();
+        if (document.getElementById('categoryModal').style.display === 'flex') renderCategoryManageList();
+        autoSyncSettingsToGist();
+    }
+
+    function addCategory(name) {
+        const list = loadCategories();
+        name = (name || '').trim();
+        if (!name) return null;
+        if (list.some(c => c.name === name)) return null;
+        const cat = { id: 'cat_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6), name };
+        list.push(cat);
+        saveCategories(list);
+        return cat.id;
+    }
+
+    function renameCategory(catId, newName) {
+        const list = loadCategories();
+        const c = list.find(x => x.id === catId);
+        newName = (newName || '').trim();
+        if (!c || !newName || list.some(x => x.id !== catId && x.name === newName)) return false;
+        c.name = newName;
+        saveCategories(list);
+        return true;
+    }
+
+    function deleteCategory(catId) {
+        const list = loadCategories();
+        if (!list.some(c => c.id === catId)) return;
+        saveCategories(list.filter(c => c.id !== catId));
+        if (activeCategory === catId) activeCategory = 'all';
+        rows.forEach(r => { if (r.catId === catId) r.catId = ''; });
+        renderCategoryBar();
+        renderTable();
+    }
+
+    function effectiveCatId(r) {
+        return loadCategories().some(c => c.id === r.catId) ? r.catId : '';
+    }
+
+    function countInCategory(catId) {
+        if (catId === 'none') return rows.filter(r => !effectiveCatId(r)).length;
+        return rows.filter(r => effectiveCatId(r) === catId).length;
+    }
+
+    function rowsForDisplay() {
+        if (activeCategory === 'all') return rows;
+        if (activeCategory === 'none') return rows.filter(r => !effectiveCatId(r));
+        return rows.filter(r => effectiveCatId(r) === activeCategory);
+    }
+
+    function renderCategoryBar() {
+        const bar = document.getElementById('categoryBar');
+        if (!bar) return;
+        const cats = loadCategories();
+        const chip = (key, label, count, action) => {
+            const cls = 'cat-chip' + (action ? ' action' : (activeCategory === key ? ' active' : ''));
+            const inner = action ? label : `${label} <span class="count">${count}</span>`;
+            const onclick = action ? `openCategoryModal('${action}')` : `setActiveCategory('${key}')`;
+            return `<span class="${cls}" onclick="${onclick}">${inner}</span>`;
+        };
+        bar.innerHTML =
+            chip('all', '全部', rows.length, '') +
+            chip('none', '未分类', countInCategory('none'), '') +
+            cats.map(c => chip(c.id, escapeHtml(c.name), countInCategory(c.id), '')).join('') +
+            chip('add', '＋ 新建', 0, 'add') +
+            chip('manage', '⚙ 管理', 0, 'manage');
+    }
+
+    function setActiveCategory(key) {
+        activeCategory = key;
+        renderCategoryBar();
+        renderTable();
+    }
+
+    function setRowCategory(id, catId) {
+        const r = rows.find(x => x.id === id);
+        if (!r) return;
+        r.catId = catId;
+        renderCategoryBar();
+        renderTable();
+        autoSyncSettingsToGist();
+    }
+
+    // ── 分类管理 Modal ──
+    let _renamingCatId = null;
+
+    function openCategoryModal(mode) {
+        _renamingCatId = null;
+        document.getElementById('categoryNameInput').value = '';
+        document.getElementById('categoryModal').style.display = 'flex';
+        renderCategoryManageList();
+        if (mode === 'add') setTimeout(() => document.getElementById('categoryNameInput').focus(), 60);
+    }
+
+    function closeCategoryModal() {
+        document.getElementById('categoryModal').style.display = 'none';
+        _renamingCatId = null;
+    }
+
+    function renderCategoryManageList() {
+        const body = document.getElementById('categoryManageListBody');
+        if (!body) return;
+        const cats = loadCategories();
+        if (!cats.length) {
+            body.innerHTML = `<div class="note-empty-tip">暂无分类，可在下方输入名称添加</div>`;
+            return;
+        }
+        body.innerHTML = cats.map(c => {
+            if (_renamingCatId === c.id) {
+                return `<div class="quick-link-edit-item">` +
+                    `<input type="text" id="catRenameInput_${c.id}" value="${escapeHtml(c.name)}" style="flex:1;text-transform:none" onkeydown="if(event.key==='Enter')submitRenameCategory('${c.id}')">` +
+                    `<button class="sort-btn" onclick="submitRenameCategory('${c.id}')">保存</button>` +
+                    `<button class="sort-btn" onclick="cancelRenameCategory()">取消</button>` +
+                    `</div>`;
+            }
+            return `<div class="quick-link-edit-item">` +
+                `<span class="qle-name" style="cursor:pointer" title="点击改名" onclick="startRenameCategory('${c.id}')">${escapeHtml(c.name)}</span>` +
+                `<span class="qle-count">${countInCategory(c.id)} 个标的</span>` +
+                `<span class="qle-del" title="改名" onclick="startRenameCategory('${c.id}')">✏️</span>` +
+                `<span class="qle-del" title="删除分类" onclick="deleteCategory('${c.id}')">✕ 删除</span>` +
+                `</div>`;
+        }).join('');
+    }
+
+    function startRenameCategory(catId) {
+        _renamingCatId = catId;
+        renderCategoryManageList();
+    }
+
+    function cancelRenameCategory() {
+        _renamingCatId = null;
+        renderCategoryManageList();
+    }
+
+    function submitRenameCategory(catId) {
+        const input = document.getElementById('catRenameInput_' + catId);
+        if (input && renameCategory(catId, input.value)) {
+            _renamingCatId = null;
+            renderCategoryManageList();
+            renderCategoryBar();
+            renderTable();
+        }
+    }
+
+    function submitCategoryName() {
+        const input = document.getElementById('categoryNameInput');
+        const name = input.value.trim();
+        if (!name) return;
+        if (addCategory(name)) {
+            input.value = '';
+            renderCategoryManageList();
+            renderCategoryBar();
+        }
+    }
+
     // ── Init ──────────────────────────────────────────────────────
     Object.keys(STOCK_MAP).forEach(name => {
         if (!rows.find(r => r.sym === name)) rows.push({ id: name + '@auto', sym: name, exchange: '', pinned: false });
@@ -2891,6 +3159,7 @@
     renderHeader();
     renderTable();
     renderQuickLinksBar();
+    renderCategoryBar();
     fetchAll();
     setInterval(fetchAll, 3000);
 </script>
